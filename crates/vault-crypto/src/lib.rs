@@ -281,8 +281,8 @@ pub fn open(password: &[u8], envelope: &VaultEnvelope) -> Result<SecretBytes, Va
     envelope.kdf.validate()?;
 
     let mut key = derive_domain_key(password, &envelope.salt, envelope.kdf, envelope.domain)?;
-    let cipher = XChaCha20Poly1305::new_from_slice(&key)
-        .map_err(|_| VaultError::CryptographicFailure)?;
+    let cipher =
+        XChaCha20Poly1305::new_from_slice(&key).map_err(|_| VaultError::CryptographicFailure)?;
     let aad = envelope.aad();
     let plaintext = cipher
         .decrypt(
