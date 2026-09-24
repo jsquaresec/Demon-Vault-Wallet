@@ -42,7 +42,8 @@ impl VaultCore {
     }
 
     pub fn authorize(&self, action: CoreAction) -> CoreDecision {
-        self.policy.evaluate(action, self.lock_state == VaultLockState::Unlocked)
+        self.policy
+            .evaluate(action, self.lock_state == VaultLockState::Unlocked)
     }
 }
 

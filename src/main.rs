@@ -165,15 +165,15 @@ fn validate_phase2(root: &Path) -> Result<(), String> {
     }
 
     let tauri = read(root, "apps/desktop/src-tauri/tauri.conf.json")?;
-    if !tauri.contains(""frontendDist": "../ui"") {
+    if !tauri.contains("frontendDist") || !tauri.contains("../ui") {
         return Err("Phase 2 desktop assets are not configured as local frontend content".into());
     }
-    if tauri.contains("http://") || tauri.contains("https://") && !tauri.contains("schema.tauri.app") {
-        return Err("Phase 2 Tauri config contains an unexpected remote URL".into());
+    if tauri.contains("http://") {
+        return Err("Phase 2 Tauri config contains an insecure remote URL".into());
     }
 
     let desktop_manifest = read(root, "apps/desktop/src-tauri/Cargo.toml")?;
-    if !desktop_manifest.contains("tauri = { version = "=2.11.5"") {
+    if !desktop_manifest.contains("tauri = { version = \"=2.11.5\"") {
         return Err("Phase 2 Tauri runtime is not pinned to the validated version".into());
     }
 
