@@ -10,7 +10,9 @@ fn foundation_status() -> String {
         VaultLockState::Locked => "locked",
         VaultLockState::Unlocked => "unlocked",
     };
-    format!("phase=3;vault={lock};crypto-vault=implemented;network=outbound-only;assets=BTC,XMR,ZEC;signing=disabled")
+    format!(
+        "phase=3;vault={lock};crypto-vault=implemented;network=outbound-only;assets=BTC,XMR,ZEC;signing=disabled"
+    )
 }
 
 fn main() {

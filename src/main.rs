@@ -51,7 +51,6 @@ const PHASE2_DOCS: &[&str] = &[
     "docs/PHASE-2-CHECKLIST.md",
 ];
 
-
 const PHASE3_DOCS: &[&str] = &[
     "docs/architecture/PHASE-3-VAULT.md",
     "docs/security/PHASE-3-SECURITY.md",
@@ -216,7 +215,9 @@ fn validate_phase3(root: &Path) -> Result<(), String> {
         "zeroize = { version = \"=1.9.0\"",
     ] {
         if !manifest.contains(required) {
-            return Err(format!("Phase 3 crypto dependency is not pinned: {required}"));
+            return Err(format!(
+                "Phase 3 crypto dependency is not pinned: {required}"
+            ));
         }
     }
 
@@ -235,7 +236,9 @@ fn validate_phase3(root: &Path) -> Result<(), String> {
         "header_tampering_is_detected_by_aead",
     ] {
         if !crypto.contains(required) {
-            return Err(format!("Phase 3 cryptographic invariant missing: {required}"));
+            return Err(format!(
+                "Phase 3 cryptographic invariant missing: {required}"
+            ));
         }
     }
 

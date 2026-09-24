@@ -153,10 +153,7 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        std::env::temp_dir().join(format!(
-            "demon-vault-{label}-{}-{now}",
-            std::process::id()
-        ))
+        std::env::temp_dir().join(format!("demon-vault-{label}-{}-{now}", std::process::id()))
     }
 
     fn test_kdf() -> KdfParams {

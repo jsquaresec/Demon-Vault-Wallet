@@ -199,13 +199,7 @@ impl VaultEnvelope {
     }
 
     fn aad(&self) -> Vec<u8> {
-        make_aad(
-            self.version,
-            self.domain,
-            self.kdf,
-            &self.salt,
-            &self.nonce,
-        )
+        make_aad(self.version, self.domain, self.kdf, &self.salt, &self.nonce)
     }
 }
 
@@ -255,8 +249,8 @@ pub fn seal(
     getrandom::fill(&mut nonce).map_err(|_| VaultError::RandomnessUnavailable)?;
 
     let mut key = derive_domain_key(password, &salt, kdf, domain)?;
-    let cipher = XChaCha20Poly1305::new_from_slice(&key)
-        .map_err(|_| VaultError::CryptographicFailure)?;
+    let cipher =
+        XChaCha20Poly1305::new_from_slice(&key).map_err(|_| VaultError::CryptographicFailure)?;
 
     let aad = make_aad(FORMAT_VERSION, domain, kdf, &salt, &nonce);
     let ciphertext = cipher
@@ -410,13 +404,7 @@ mod tests {
 
     #[test]
     fn ciphertext_tampering_is_detected() {
-        let mut envelope = seal(
-            b"password",
-            VaultDomain::Wallet,
-            b"secret",
-            test_kdf(),
-        )
-        .unwrap();
+        let mut envelope = seal(b"password", VaultDomain::Wallet, b"secret", test_kdf()).unwrap();
         envelope.ciphertext[0] ^= 0x40;
         assert_eq!(
             open(b"password", &envelope).unwrap_err(),
@@ -426,13 +414,7 @@ mod tests {
 
     #[test]
     fn header_tampering_is_detected_by_aead() {
-        let envelope = seal(
-            b"password",
-            VaultDomain::Wallet,
-            b"secret",
-            test_kdf(),
-        )
-        .unwrap();
+        let envelope = seal(b"password", VaultDomain::Wallet, b"secret", test_kdf()).unwrap();
         let mut encoded = envelope.encode().unwrap();
         encoded[7] ^= 0x01;
         let decoded = VaultEnvelope::decode(&encoded).unwrap();

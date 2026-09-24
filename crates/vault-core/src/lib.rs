@@ -186,7 +186,10 @@ mod tests {
 
         core.unlock_local_vault(&path, b"correct horse battery staple")
             .unwrap();
-        assert_eq!(core.foundation_status().lock_state, VaultLockState::Unlocked);
+        assert_eq!(
+            core.foundation_status().lock_state,
+            VaultLockState::Unlocked
+        );
         assert_eq!(core.wallet_secret().unwrap(), b"synthetic-wallet-secret");
 
         core.lock();
