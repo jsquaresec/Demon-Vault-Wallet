@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
+    "crates/vault-bitcoin",
     "crates/vault-core",
     "crates/vault-crypto",
     "crates/vault-policy",
