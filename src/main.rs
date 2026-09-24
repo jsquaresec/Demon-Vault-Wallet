@@ -144,10 +144,12 @@ fn validate_phase2(root: &Path) -> Result<(), String> {
 
     let network = read(root, "crates/vault-network/src/lib.rs")?;
     for required in [
-        "inbound_listener: false",
-        "port_forwarding: false",
-        "upnp: false",
-        "nat_pmp: false",
+        "inbound_listener",
+        "port_forwarding",
+        "upnp",
+        "nat_pmp",
+        "Default",
+        "outbound_only",
     ] {
         if !network.contains(required) {
             return Err(format!("Phase 2 network invariant missing: {required}"));

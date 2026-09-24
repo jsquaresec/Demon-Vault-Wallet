@@ -1,22 +1,11 @@
 #![forbid(unsafe_code)]
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct NetworkPolicy {
     pub inbound_listener: bool,
     pub port_forwarding: bool,
     pub upnp: bool,
     pub nat_pmp: bool,
-}
-
-impl Default for NetworkPolicy {
-    fn default() -> Self {
-        Self {
-            inbound_listener: false,
-            port_forwarding: false,
-            upnp: false,
-            nat_pmp: false,
-        }
-    }
 }
 
 impl NetworkPolicy {
