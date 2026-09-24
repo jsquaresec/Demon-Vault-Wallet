@@ -7,13 +7,13 @@ use vault_policy::{Asset, CoreAction, CoreDecision, PolicyEngine};
 use vault_storage::{StorageError, read_envelope, write_new_envelope_atomic};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum VaultLockState { Locked, Unlocked }
+pub enum VaultLockState {\n    Locked,\n    Unlocked,\n}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Assurance { Configured, Detected, Verified, Unknown }
+pub enum Assurance {\n    Configured,\n    Detected,\n    Verified,\n    Unknown,\n}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SecurityCategory { Vault, Network, Privacy, Application, Backup, TransactionProtection }
+pub enum SecurityCategory {\n    Vault,\n    Network,\n    Privacy,\n    Application,\n    Backup,\n    TransactionProtection,\n}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SecurityFinding {
