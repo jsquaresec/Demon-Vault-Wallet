@@ -184,7 +184,7 @@ fn sync_parent_if_supported(_parent: &Path) -> Result<(), StorageError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use vault_crypto::{seal, KdfParams, VaultDomain};
+    use vault_crypto::{KdfParams, VaultDomain, seal};
 
     fn unique_test_dir(label: &str) -> PathBuf {
         let mut random = [0u8; 8];
