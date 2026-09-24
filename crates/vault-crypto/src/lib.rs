@@ -253,9 +253,12 @@ pub fn seal(
         XChaCha20Poly1305::new_from_slice(&key).map_err(|_| VaultError::CryptographicFailure)?;
 
     let aad = make_aad(FORMAT_VERSION, domain, kdf, &salt, &nonce);
+    let nonce_ref: &XNonce = (&nonce[..])
+        .try_into()
+        .map_err(|_| VaultError::CryptographicFailure)?;
     let ciphertext = cipher
         .encrypt(
-            XNonce::from_slice(&nonce),
+            nonce_ref,
             Payload {
                 msg: plaintext,
                 aad: &aad,
@@ -284,9 +287,12 @@ pub fn open(password: &[u8], envelope: &VaultEnvelope) -> Result<SecretBytes, Va
     let cipher =
         XChaCha20Poly1305::new_from_slice(&key).map_err(|_| VaultError::CryptographicFailure)?;
     let aad = envelope.aad();
+    let nonce_ref: &XNonce = (&envelope.nonce[..])
+        .try_into()
+        .map_err(|_| VaultError::CryptographicFailure)?;
     let plaintext = cipher
         .decrypt(
-            XNonce::from_slice(&envelope.nonce),
+            nonce_ref,
             Payload {
                 msg: &envelope.ciphertext,
                 aad: &aad,
