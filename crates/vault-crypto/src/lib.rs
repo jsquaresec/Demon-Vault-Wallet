@@ -61,10 +61,14 @@ impl Default for KdfParams {
 
 impl KdfParams {
     fn validate(self) -> Result<(), VaultError> {
-        if self.memory_kib < 19 * 1024 {
+        if self.memory_kib < 19 * 1024 || self.memory_kib > 256 * 1024 {
             return Err(VaultError::InvalidKdfParams);
         }
-        if self.iterations < 2 || self.parallelism == 0 || self.parallelism > 8 {
+        if self.iterations < 2
+            || self.iterations > 6
+            || self.parallelism == 0
+            || self.parallelism > 4
+        {
             return Err(VaultError::InvalidKdfParams);
         }
         Ok(())
@@ -464,5 +468,27 @@ mod tests {
         let debug = format!("{secret:?}");
         assert!(!debug.contains("never-print-me"));
         assert!(debug.contains("redacted"));
+    }
+
+    #[test]
+    fn excessive_kdf_parameters_are_rejected_before_derivation() {
+        assert_eq!(
+            KdfParams {
+                memory_kib: 512 * 1024,
+                iterations: 3,
+                parallelism: 1,
+            }
+            .validate(),
+            Err(VaultError::InvalidKdfParams)
+        );
+        assert_eq!(
+            KdfParams {
+                memory_kib: 65_536,
+                iterations: 100,
+                parallelism: 1,
+            }
+            .validate(),
+            Err(VaultError::InvalidKdfParams)
+        );
     }
 }

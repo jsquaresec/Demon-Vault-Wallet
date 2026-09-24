@@ -13,8 +13,11 @@
 - [x] Derived keys are zeroized after use.
 - [x] Decrypted secret storage zeroizes on drop.
 - [x] Secret Debug output is redacted.
-- [x] Atomic write-new persistence implemented.
-- [x] Existing vaults are never silently overwritten.
+- [x] Create-only write publication implemented with same-directory hard link.
+- [x] Existing vaults are never silently overwritten, including racing creation.
+- [x] Attacker-controlled KDF memory/iteration parameters are upper-bounded before derivation.
+- [x] Vault file reads are size-bounded.
+- [x] Unix vault files are created owner-only (`0600`).
 - [x] Core create/unlock/lock lifecycle implemented.
 - [x] Phase 3 does not implement chain keys, signing, or mainnet.
 - [x] Phase 0–2 validators remain mandatory.

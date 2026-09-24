@@ -3,12 +3,13 @@
 use std::{
     error::Error,
     fmt,
-    fs::{self, OpenOptions},
-    io::{self, Write},
+    fs::{self, File, OpenOptions},
+    io::{self, Read, Write},
     path::{Path, PathBuf},
-    time::{SystemTime, UNIX_EPOCH},
 };
 use vault_crypto::{VaultEnvelope, VaultError};
+
+const MAX_VAULT_FILE_BYTES: u64 = 20 * 1024 * 1024;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AppPaths {
@@ -44,16 +45,20 @@ impl AppPaths {
 #[derive(Debug)]
 pub enum StorageError {
     AlreadyExists,
+    TooLarge,
     Io(io::Error),
     InvalidVault(VaultError),
+    RandomnessUnavailable,
 }
 
 impl fmt::Display for StorageError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::AlreadyExists => write!(formatter, "vault file already exists"),
+            Self::TooLarge => write!(formatter, "vault file exceeds configured size limit"),
             Self::Io(error) => write!(formatter, "vault storage error: {error}"),
             Self::InvalidVault(error) => write!(formatter, "invalid encrypted vault: {error}"),
+            Self::RandomnessUnavailable => write!(formatter, "secure randomness unavailable"),
         }
     }
 }
@@ -61,9 +66,9 @@ impl fmt::Display for StorageError {
 impl Error for StorageError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
-            Self::AlreadyExists => None,
             Self::Io(error) => Some(error),
             Self::InvalidVault(error) => Some(error),
+            _ => None,
         }
     }
 }
@@ -94,42 +99,75 @@ pub fn write_new_envelope_atomic(
     fs::create_dir_all(parent)?;
 
     let encoded = envelope.encode()?;
-    let temp = temporary_sibling(path);
+    if encoded.len() as u64 > MAX_VAULT_FILE_BYTES {
+        return Err(StorageError::TooLarge);
+    }
+
+    let temp = temporary_sibling(path)?;
     let mut options = OpenOptions::new();
     options.write(true).create_new(true);
 
-    let write_result = (|| -> Result<(), StorageError> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600);
+    }
+
+    let result = (|| -> Result<(), StorageError> {
         let mut file = options.open(&temp)?;
         file.write_all(&encoded)?;
+        file.flush()?;
         file.sync_all()?;
         drop(file);
-        fs::rename(&temp, path)?;
+
+        match fs::hard_link(&temp, path) {
+            Ok(()) => {}
+            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {
+                return Err(StorageError::AlreadyExists);
+            }
+            Err(error) => return Err(StorageError::Io(error)),
+        }
+
         sync_parent_if_supported(parent)?;
+        fs::remove_file(&temp)?;
         Ok(())
     })();
 
-    if write_result.is_err() {
+    if result.is_err() {
         let _ = fs::remove_file(&temp);
     }
-    write_result
+    result
 }
 
 pub fn read_envelope(path: &Path) -> Result<VaultEnvelope, StorageError> {
-    let bytes = fs::read(path)?;
+    let file = File::open(path)?;
+    let metadata = file.metadata()?;
+    if metadata.len() > MAX_VAULT_FILE_BYTES {
+        return Err(StorageError::TooLarge);
+    }
+
+    let capacity = usize::try_from(metadata.len()).map_err(|_| StorageError::TooLarge)?;
+    let mut bytes = Vec::with_capacity(capacity);
+    let mut limited = file.take(MAX_VAULT_FILE_BYTES + 1);
+    limited.read_to_end(&mut bytes)?;
+    if bytes.len() as u64 > MAX_VAULT_FILE_BYTES {
+        return Err(StorageError::TooLarge);
+    }
+
     VaultEnvelope::decode(&bytes).map_err(StorageError::InvalidVault)
 }
 
-fn temporary_sibling(path: &Path) -> PathBuf {
+fn temporary_sibling(path: &Path) -> Result<PathBuf, StorageError> {
     let parent = path.parent().unwrap_or_else(|| Path::new("."));
     let name = path
         .file_name()
         .and_then(|name| name.to_str())
         .unwrap_or("wallet.dvlt");
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|duration| duration.as_nanos())
-        .unwrap_or(0);
-    parent.join(format!(".{name}.{}.{}.tmp", std::process::id(), now))
+
+    let mut random = [0u8; 8];
+    getrandom::fill(&mut random).map_err(|_| StorageError::RandomnessUnavailable)?;
+    let suffix = u64::from_be_bytes(random);
+    Ok(parent.join(format!(".{name}.{suffix:016x}.tmp")))
 }
 
 #[cfg(unix)]
@@ -146,14 +184,15 @@ fn sync_parent_if_supported(_parent: &Path) -> Result<(), StorageError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use vault_crypto::{KdfParams, VaultDomain, seal};
+    use vault_crypto::{seal, KdfParams, VaultDomain};
 
     fn unique_test_dir(label: &str) -> PathBuf {
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_nanos();
-        std::env::temp_dir().join(format!("demon-vault-{label}-{}-{now}", std::process::id()))
+        let mut random = [0u8; 8];
+        getrandom::fill(&mut random).unwrap();
+        std::env::temp_dir().join(format!(
+            "demon-vault-{label}-{:016x}",
+            u64::from_be_bytes(random)
+        ))
     }
 
     fn test_kdf() -> KdfParams {
@@ -174,7 +213,7 @@ mod tests {
     }
 
     #[test]
-    fn encrypted_envelope_is_created_atomically_and_read_back() {
+    fn encrypted_envelope_is_created_and_read_back() {
         let root = unique_test_dir("atomic");
         let path = AppPaths::new(&root).wallet_vault();
         let envelope = seal(
@@ -193,8 +232,40 @@ mod tests {
     }
 
     #[test]
-    fn existing_vault_is_never_silently_overwritten() {
+    fn existing_vault_is_never_overwritten() {
         let root = unique_test_dir("no-overwrite");
+        let path = AppPaths::new(&root).wallet_vault();
+        let first = seal(
+            b"phase-three-test",
+            VaultDomain::Wallet,
+            b"first-secret",
+            test_kdf(),
+        )
+        .unwrap();
+        let second = seal(
+            b"phase-three-test",
+            VaultDomain::Wallet,
+            b"second-secret",
+            test_kdf(),
+        )
+        .unwrap();
+
+        write_new_envelope_atomic(&path, &first).unwrap();
+        assert!(matches!(
+            write_new_envelope_atomic(&path, &second),
+            Err(StorageError::AlreadyExists)
+        ));
+        assert_eq!(read_envelope(&path).unwrap(), first);
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn vault_file_is_owner_only_on_unix() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let root = unique_test_dir("mode");
         let path = AppPaths::new(&root).wallet_vault();
         let envelope = seal(
             b"phase-three-test",
@@ -205,10 +276,8 @@ mod tests {
         .unwrap();
 
         write_new_envelope_atomic(&path, &envelope).unwrap();
-        assert!(matches!(
-            write_new_envelope_atomic(&path, &envelope),
-            Err(StorageError::AlreadyExists)
-        ));
+        let mode = fs::metadata(&path).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o600);
 
         fs::remove_dir_all(root).unwrap();
     }

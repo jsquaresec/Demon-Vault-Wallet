@@ -234,6 +234,9 @@ fn validate_phase3(root: &Path) -> Result<(), String> {
         "AuthenticationFailed",
         "ciphertext_tampering_is_detected",
         "header_tampering_is_detected_by_aead",
+        "memory_kib > 256 * 1024",
+        "iterations > 6",
+        "excessive_kdf_parameters_are_rejected_before_derivation",
     ] {
         if !crypto.contains(required) {
             return Err(format!(
@@ -247,7 +250,9 @@ fn validate_phase3(root: &Path) -> Result<(), String> {
         "write_new_envelope_atomic",
         "create_new(true)",
         "sync_all()",
-        "fs::rename",
+        "fs::hard_link",
+        "mode(0o600)",
+        "MAX_VAULT_FILE_BYTES",
         "AlreadyExists",
     ] {
         if !storage.contains(required) {
