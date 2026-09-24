@@ -220,7 +220,8 @@ mod tests {
             .bitcoin_test_wallet(BitcoinTestNetwork::Regtest)
             .unwrap();
         let address = wallet.next_receive_address();
-        assert!(address.is_valid_for_network(BitcoinTestNetwork::Regtest.network()));
+        let validated = wallet.validate_recipient(&address.to_string()).unwrap();
+        assert_eq!(validated, address);
 
         fs::remove_dir_all(path.parent().unwrap()).unwrap();
     }
