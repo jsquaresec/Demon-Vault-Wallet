@@ -217,7 +217,7 @@ mod tests {
         let root = unique_test_dir("atomic");
         let path = AppPaths::new(&root).wallet_vault();
         let envelope = seal(
-            b"phase-three-test",
+            b"vault-storage-test",
             VaultDomain::Wallet,
             b"synthetic-secret",
             test_kdf(),
@@ -236,14 +236,14 @@ mod tests {
         let root = unique_test_dir("no-overwrite");
         let path = AppPaths::new(&root).wallet_vault();
         let first = seal(
-            b"phase-three-test",
+            b"vault-storage-test",
             VaultDomain::Wallet,
             b"first-secret",
             test_kdf(),
         )
         .unwrap();
         let second = seal(
-            b"phase-three-test",
+            b"vault-storage-test",
             VaultDomain::Wallet,
             b"second-secret",
             test_kdf(),
@@ -268,7 +268,7 @@ mod tests {
         let root = unique_test_dir("mode");
         let path = AppPaths::new(&root).wallet_vault();
         let envelope = seal(
-            b"phase-three-test",
+            b"vault-storage-test",
             VaultDomain::Wallet,
             b"synthetic-secret",
             test_kdf(),

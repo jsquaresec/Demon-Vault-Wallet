@@ -389,12 +389,12 @@ mod tests {
         let envelope = seal(
             b"correct horse battery staple",
             VaultDomain::Wallet,
-            b"synthetic phase-three secret",
+            b"synthetic wallet secret",
             test_kdf(),
         )
         .unwrap();
         let opened = open(b"correct horse battery staple", &envelope).unwrap();
-        assert_eq!(opened.as_slice(), b"synthetic phase-three secret");
+        assert_eq!(opened.as_slice(), b"synthetic wallet secret");
     }
 
     #[test]

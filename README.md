@@ -12,9 +12,11 @@ The current codebase provides:
 - domain separation for wallet and integration secrets;
 - zeroizing secret containers;
 - create-only encrypted-vault persistence;
+- Bitcoin Testnet, Signet, and Regtest address/network validation;
+- Bitcoin UTXO, bounded fee-rate, unsigned transaction-construction, and replaceable backend foundations;
 - Windows, macOS, and Linux CI.
 
-Transaction signing, live blockchain synchronization, and mainnet wallet operations are intentionally unavailable until their implementations are complete and tested.
+Bitcoin mainnet is disabled. Transaction signing remains disabled until the authorization and local-signing implementation is complete. Monero and Zcash chain functionality is not yet implemented.
 
 ## Validation
 
