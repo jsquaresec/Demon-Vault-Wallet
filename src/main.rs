@@ -160,7 +160,7 @@ fn validate_phase2(root: &Path) -> Result<(), String> {
         "raw private-key export is outside the Phase 2 foundation",
     ] {
         if !policy.contains(required) {
-            return Err(format!("Phase 2 deny-by-default policy missing: {required}"));
+            return Err(format!(\n                "Phase 2 deny-by-default policy missing: {required}"\n            ));
         }
     }
 
