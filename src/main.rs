@@ -51,6 +51,21 @@ const PHASE2_DOCS: &[&str] = &[
     "docs/PHASE-2-CHECKLIST.md",
 ];
 
+
+const PHASE3_DOCS: &[&str] = &[
+    "docs/architecture/PHASE-3-VAULT.md",
+    "docs/security/PHASE-3-SECURITY.md",
+    "docs/PHASE-3-CHECKLIST.md",
+];
+
+const PHASE3_FILES: &[&str] = &[
+    "crates/vault-crypto/Cargo.toml",
+    "crates/vault-crypto/src/lib.rs",
+    "crates/vault-storage/src/lib.rs",
+    "crates/vault-core/src/lib.rs",
+    ".github/workflows/phase3.yml",
+];
+
 const PHASE2_FILES: &[&str] = &[
     "crates/vault-core/Cargo.toml",
     "crates/vault-core/src/lib.rs",
@@ -186,9 +201,76 @@ fn validate_phase2(root: &Path) -> Result<(), String> {
     Ok(())
 }
 
+fn validate_phase3(root: &Path) -> Result<(), String> {
+    validate_phase2(root)?;
+    require_files(root, PHASE3_DOCS, "Phase 3")?;
+    require_files(root, PHASE3_FILES, "Phase 3")?;
+
+    let manifest = read(root, "crates/vault-crypto/Cargo.toml")?;
+    for required in [
+        "argon2 = { version = \"=0.6.0\"",
+        "chacha20poly1305 = { version = \"=0.11.0\"",
+        "getrandom = \"=0.4.3\"",
+        "hkdf = \"=0.13.0\"",
+        "sha2 = \"=0.11.0\"",
+        "zeroize = { version = \"=1.9.0\"",
+    ] {
+        if !manifest.contains(required) {
+            return Err(format!("Phase 3 crypto dependency is not pinned: {required}"));
+        }
+    }
+
+    let crypto = read(root, "crates/vault-crypto/src/lib.rs")?;
+    for required in [
+        "Algorithm::Argon2id",
+        "XChaCha20Poly1305",
+        "Hkdf::<Sha256>",
+        "Zeroizing<Vec<u8>>",
+        "FORMAT_VERSION: u16 = 1",
+        "memory_kib: 65_536",
+        "demon-vault/v1/wallet-secrets",
+        "demon-vault/v1/integration-secrets",
+        "AuthenticationFailed",
+        "ciphertext_tampering_is_detected",
+        "header_tampering_is_detected_by_aead",
+    ] {
+        if !crypto.contains(required) {
+            return Err(format!("Phase 3 cryptographic invariant missing: {required}"));
+        }
+    }
+
+    let storage = read(root, "crates/vault-storage/src/lib.rs")?;
+    for required in [
+        "write_new_envelope_atomic",
+        "create_new(true)",
+        "sync_all()",
+        "fs::rename",
+        "AlreadyExists",
+    ] {
+        if !storage.contains(required) {
+            return Err(format!("Phase 3 storage invariant missing: {required}"));
+        }
+    }
+
+    let core = read(root, "crates/vault-core/src/lib.rs")?;
+    for required in [
+        "create_local_vault",
+        "unlock_local_vault",
+        "pub fn lock",
+        "unlocked_wallet_secret: Option<SecretBytes>",
+        "WrongDomain",
+    ] {
+        if !core.contains(required) {
+            return Err(format!("Phase 3 core vault lifecycle missing: {required}"));
+        }
+    }
+
+    Ok(())
+}
+
 fn print_help() {
     println!("Demon Vault security-gate validator");
-    println!("Usage: cargo run -- [all|phase0|phase1|phase2]");
+    println!("Usage: cargo run -- [all|phase0|phase1|phase2|phase3]");
 }
 
 fn main() {
@@ -199,10 +281,11 @@ fn main() {
         "phase0" => validate_phase0(root).map(|()| println!("Demon Vault Phase 0 CLI: PASS")),
         "phase1" => validate_phase1(root).map(|()| println!("Demon Vault Phase 1 CLI: PASS")),
         "phase2" => validate_phase2(root).map(|()| println!("Demon Vault Phase 2 CLI: PASS")),
-        "all" => validate_phase2(root).map(|()| {
+        "phase3" | "all" => validate_phase3(root).map(|()| {
             println!("Demon Vault Phase 0 CLI: PASS");
             println!("Demon Vault Phase 1 CLI: PASS");
             println!("Demon Vault Phase 2 CLI: PASS");
+            println!("Demon Vault Phase 3 CLI: PASS");
             println!("Demon Vault security gates: PASS");
         }),
         "--help" | "-h" => {
@@ -235,5 +318,10 @@ mod tests {
     #[test]
     fn phase_two_foundation_is_complete() {
         validate_phase2(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
+    }
+
+    #[test]
+    fn phase_three_vault_is_complete() {
+        validate_phase3(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
     }
 }

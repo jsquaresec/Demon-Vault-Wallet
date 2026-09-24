@@ -26,9 +26,15 @@ A complete validation prints:
 Demon Vault Phase 0 CLI: PASS
 Demon Vault Phase 1 CLI: PASS
 Demon Vault Phase 2 CLI: PASS
+Demon Vault Phase 3 CLI: PASS
 Demon Vault security gates: PASS
 ```
 
 Individual gates can be checked with `cargo run -- phase0`, `phase1`, or `phase2`.
 
 The desktop shell lives under `apps/desktop`. Architecture and phase checklists live under `docs/`.
+
+
+## Phase 3 cryptography
+
+The local vault uses pinned RustCrypto components: Argon2id for the password KDF, HKDF-SHA-256 for domain-separated wallet/integration keys, XChaCha20-Poly1305 for authenticated encryption, OS-provided cryptographic randomness, and zeroizing secret containers. See `docs/architecture/PHASE-3-VAULT.md`.

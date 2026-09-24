@@ -1,9 +1,11 @@
 [package]
 name = "vault-core"
-version = "0.0.1"
+version = "0.0.2"
 edition = "2024"
 publish = false
 
 [dependencies]
+vault-crypto = { path = "../vault-crypto" }
 vault-network = { path = "../vault-network" }
 vault-policy = { path = "../vault-policy" }
+vault-storage = { path = "../vault-storage" }
