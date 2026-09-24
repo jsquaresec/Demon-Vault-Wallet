@@ -1,0 +1,12 @@
+[package]
+name = "demon-vault-desktop"
+version = "0.0.1"
+edition = "2024"
+publish = false
+
+[build-dependencies]
+tauri-build = "=2.6.3"
+
+[dependencies]
+tauri = { version = "=2.11.5", features = [] }
+vault-core = { path = "../../../crates/vault-core" }

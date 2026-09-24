@@ -44,19 +44,46 @@ const PHASE1_REQUIRED_CONCEPTS: &[&str] = &[
     "Phase relationship",
 ];
 
+const PHASE2_DOCS: &[&str] = &[
+    "docs/architecture/PHASE-2-FOUNDATION.md",
+    "docs/security/PHASE-2-SECURITY.md",
+    "docs/platform/PHASE-2-DESKTOP.md",
+    "docs/PHASE-2-CHECKLIST.md",
+];
+
+const PHASE2_FILES: &[&str] = &[
+    "crates/vault-core/Cargo.toml",
+    "crates/vault-core/src/lib.rs",
+    "crates/vault-policy/Cargo.toml",
+    "crates/vault-policy/src/lib.rs",
+    "crates/vault-network/Cargo.toml",
+    "crates/vault-network/src/lib.rs",
+    "crates/vault-storage/Cargo.toml",
+    "crates/vault-storage/src/lib.rs",
+    "apps/desktop/src-tauri/Cargo.toml",
+    "apps/desktop/src-tauri/src/main.rs",
+    "apps/desktop/src-tauri/tauri.conf.json",
+    "apps/desktop/ui/index.html",
+    "apps/desktop/ui/styles.css",
+    "apps/desktop/ui/app.js",
+];
+
 fn require_files(root: &Path, files: &[&str], phase: &str) -> Result<(), String> {
     for rel in files {
         if !root.join(rel).is_file() {
-            return Err(format!("missing required {phase} document: {rel}"));
+            return Err(format!("missing required {phase} file: {rel}"));
         }
     }
     Ok(())
 }
 
+fn read(root: &Path, rel: &str) -> Result<String, String> {
+    fs::read_to_string(root.join(rel)).map_err(|e| format!("{rel}: {e}"))
+}
+
 fn validate_phase0(root: &Path) -> Result<(), String> {
     require_files(root, PHASE0_DOCS, "Phase 0")?;
-    let phase0 =
-        fs::read_to_string(root.join("docs/architecture/PHASE-0.md")).map_err(|e| e.to_string())?;
+    let phase0 = read(root, "docs/architecture/PHASE-0.md")?;
     for invariant in PHASE0_INVARIANTS {
         if !phase0.contains(invariant) {
             return Err(format!("Phase 0 invariant missing: {invariant}"));
@@ -69,16 +96,14 @@ fn validate_phase1(root: &Path) -> Result<(), String> {
     validate_phase0(root)?;
     require_files(root, PHASE1_DOCS, "Phase 1")?;
 
-    let model = fs::read_to_string(root.join("docs/security/threat-model/THREAT-MODEL.md"))
-        .map_err(|e| e.to_string())?;
+    let model = read(root, "docs/security/threat-model/THREAT-MODEL.md")?;
     for concept in PHASE1_REQUIRED_CONCEPTS {
         if !model.contains(concept) {
             return Err(format!("Phase 1 threat-model concept missing: {concept}"));
         }
     }
 
-    let register = fs::read_to_string(root.join("docs/security/threat-model/THREAT-REGISTER.md"))
-        .map_err(|e| e.to_string())?;
+    let register = read(root, "docs/security/threat-model/THREAT-REGISTER.md")?;
     for number in 1..=24 {
         let id = format!("TM-{number:03}");
         if !register.contains(&id) {
@@ -86,9 +111,7 @@ fn validate_phase1(root: &Path) -> Result<(), String> {
         }
     }
 
-    let boundaries =
-        fs::read_to_string(root.join("docs/security/threat-model/TRUST-BOUNDARIES.md"))
-            .map_err(|e| e.to_string())?;
+    let boundaries = read(root, "docs/security/threat-model/TRUST-BOUNDARIES.md")?;
     for number in 1..=8 {
         let id = format!("TB-{number}");
         if !boundaries.contains(&id) {
@@ -96,8 +119,7 @@ fn validate_phase1(root: &Path) -> Result<(), String> {
         }
     }
 
-    let abuse = fs::read_to_string(root.join("docs/security/threat-model/ABUSE-CASES.md"))
-        .map_err(|e| e.to_string())?;
+    let abuse = read(root, "docs/security/threat-model/ABUSE-CASES.md")?;
     for number in 1..=8 {
         let id = format!("AC-{number:02}");
         if !abuse.contains(&id) {
@@ -108,9 +130,59 @@ fn validate_phase1(root: &Path) -> Result<(), String> {
     Ok(())
 }
 
+fn validate_phase2(root: &Path) -> Result<(), String> {
+    validate_phase1(root)?;
+    require_files(root, PHASE2_DOCS, "Phase 2")?;
+    require_files(root, PHASE2_FILES, "Phase 2")?;
+
+    let core = read(root, "crates/vault-core/src/lib.rs")?;
+    for required in ["VaultLockState::Locked", "SignTransaction", "VaultCore"] {
+        if !core.contains(required) {
+            return Err(format!("Phase 2 core foundation missing: {required}"));
+        }
+    }
+
+    let network = read(root, "crates/vault-network/src/lib.rs")?;
+    for required in [
+        "inbound_listener: false",
+        "port_forwarding: false",
+        "upnp: false",
+        "nat_pmp: false",
+    ] {
+        if !network.contains(required) {
+            return Err(format!("Phase 2 network invariant missing: {required}"));
+        }
+    }
+
+    let policy = read(root, "crates/vault-policy/src/lib.rs")?;
+    for required in [
+        "signing is not implemented in Phase 2",
+        "raw private-key export is outside the Phase 2 foundation",
+    ] {
+        if !policy.contains(required) {
+            return Err(format!("Phase 2 deny-by-default policy missing: {required}"));
+        }
+    }
+
+    let tauri = read(root, "apps/desktop/src-tauri/tauri.conf.json")?;
+    if !tauri.contains(""frontendDist": "../ui"") {
+        return Err("Phase 2 desktop assets are not configured as local frontend content".into());
+    }
+    if tauri.contains("http://") || tauri.contains("https://") && !tauri.contains("schema.tauri.app") {
+        return Err("Phase 2 Tauri config contains an unexpected remote URL".into());
+    }
+
+    let desktop_manifest = read(root, "apps/desktop/src-tauri/Cargo.toml")?;
+    if !desktop_manifest.contains("tauri = { version = "=2.11.5"") {
+        return Err("Phase 2 Tauri runtime is not pinned to the validated version".into());
+    }
+
+    Ok(())
+}
+
 fn print_help() {
     println!("Demon Vault security-gate validator");
-    println!("Usage: cargo run -- [all|phase0|phase1]");
+    println!("Usage: cargo run -- [all|phase0|phase1|phase2]");
 }
 
 fn main() {
@@ -118,15 +190,13 @@ fn main() {
     let mode = env::args().nth(1).unwrap_or_else(|| "all".to_string());
 
     let result = match mode.as_str() {
-        "phase0" => validate_phase0(root).map(|()| {
-            println!("Demon Vault Phase 0 CLI: PASS");
-        }),
-        "phase1" => validate_phase1(root).map(|()| {
-            println!("Demon Vault Phase 1 CLI: PASS");
-        }),
-        "all" => validate_phase1(root).map(|()| {
+        "phase0" => validate_phase0(root).map(|()| println!("Demon Vault Phase 0 CLI: PASS")),
+        "phase1" => validate_phase1(root).map(|()| println!("Demon Vault Phase 1 CLI: PASS")),
+        "phase2" => validate_phase2(root).map(|()| println!("Demon Vault Phase 2 CLI: PASS")),
+        "all" => validate_phase2(root).map(|()| {
             println!("Demon Vault Phase 0 CLI: PASS");
             println!("Demon Vault Phase 1 CLI: PASS");
+            println!("Demon Vault Phase 2 CLI: PASS");
             println!("Demon Vault security gates: PASS");
         }),
         "--help" | "-h" => {
@@ -154,5 +224,10 @@ mod tests {
     #[test]
     fn phase_one_threat_model_is_complete() {
         validate_phase1(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
+    }
+
+    #[test]
+    fn phase_two_foundation_is_complete() {
+        validate_phase2(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
     }
 }

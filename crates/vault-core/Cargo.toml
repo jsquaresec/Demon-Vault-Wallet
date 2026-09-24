@@ -1,0 +1,9 @@
+[package]
+name = "vault-core"
+version = "0.0.1"
+edition = "2024"
+publish = false
+
+[dependencies]
+vault-network = { path = "../vault-network" }
+vault-policy = { path = "../vault-policy" }
