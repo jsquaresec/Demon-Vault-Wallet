@@ -1,40 +1,40 @@
 # Demon Vault Wallet
 
-Demon Vault is a cybersecurity-first, self-custody desktop wallet planned for Bitcoin (BTC), Monero (XMR), and Zcash (ZEC).
+Demon Vault is a cybersecurity-first, self-custody desktop wallet for Bitcoin (BTC), Monero (XMR), and Zcash (ZEC).
 
-Development is strictly phase-gated.
+The current codebase provides:
 
-- **Phase 0:** architecture and security specification — complete.
-- **Phase 1:** threat model — complete.
-- **Phase 2:** Rust core + cross-platform desktop GUI foundation — complete after CI validation.
+- a cross-platform Tauri desktop shell;
+- a Rust wallet-core boundary;
+- deny-by-default policy controls for unavailable sensitive operations;
+- outbound-only default network policy;
+- a local encrypted vault using Argon2id, HKDF-SHA-256, and XChaCha20-Poly1305;
+- domain separation for wallet and integration secrets;
+- zeroizing secret containers;
+- create-only encrypted-vault persistence;
+- Windows, macOS, and Linux CI.
 
-Phase 2 intentionally contains **no real wallet secrets, chain synchronization, transaction signing, or mainnet functionality**. Those capabilities are introduced only in their roadmap phases.
+Transaction signing, live blockchain synchronization, and mainnet wallet operations are intentionally unavailable until their implementations are complete and tested.
 
-## Security-gate CLI
+## Validation
 
 ```bash
 cargo fmt --all --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 cargo check --workspace
-cargo run -- all
 ```
 
-A complete validation prints:
+The desktop application lives under `apps/desktop`. Core security components live under `crates/`, and architecture/security documentation lives under `docs/`.
 
-```text
-Demon Vault Phase 0 CLI: PASS
-Demon Vault Phase 1 CLI: PASS
-Demon Vault Phase 2 CLI: PASS
-Demon Vault Phase 3 CLI: PASS
-Demon Vault security gates: PASS
-```
+## Cryptographic vault
 
-Individual gates can be checked with `cargo run -- phase0`, `phase1`, or `phase2`.
+The local vault uses pinned RustCrypto components:
 
-The desktop shell lives under `apps/desktop`. Architecture and phase checklists live under `docs/`.
+- Argon2id for password-based key derivation;
+- HKDF-SHA-256 for domain-separated wallet/integration keys;
+- XChaCha20-Poly1305 for authenticated encryption;
+- operating-system cryptographic randomness;
+- zeroizing containers for decrypted secrets and derived key material.
 
-
-## Phase 3 cryptography
-
-The local vault uses pinned RustCrypto components: Argon2id for the password KDF, HKDF-SHA-256 for domain-separated wallet/integration keys, XChaCha20-Poly1305 for authenticated encryption, OS-provided cryptographic randomness, and zeroizing secret containers. See `docs/architecture/PHASE-3-VAULT.md`.
+See `docs/architecture/VAULT.md` and `docs/security/VAULT-SECURITY.md`.

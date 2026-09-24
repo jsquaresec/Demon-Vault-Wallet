@@ -4,20 +4,20 @@
 use vault_core::{VaultCore, VaultLockState};
 
 #[tauri::command]
-fn foundation_status() -> String {
-    let status = VaultCore::default().foundation_status();
+fn security_status() -> String {
+    let status = VaultCore::default().status();
     let lock = match status.lock_state {
         VaultLockState::Locked => "locked",
         VaultLockState::Unlocked => "unlocked",
     };
     format!(
-        "phase=3;vault={lock};crypto-vault=implemented;network=outbound-only;assets=BTC,XMR,ZEC;signing=disabled"
+        "vault={lock};crypto-vault=implemented;network=outbound-only;assets=BTC,XMR,ZEC;signing=disabled"
     )
 }
 
 fn main() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![foundation_status])
+        .invoke_handler(tauri::generate_handler![security_status])
         .run(tauri::generate_context!())
-        .expect("failed to run Demon Vault desktop foundation");
+        .expect("failed to run Demon Vault desktop application");
 }

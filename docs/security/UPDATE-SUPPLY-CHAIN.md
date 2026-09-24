@@ -2,14 +2,17 @@
 
 A compromised update channel can compromise future wallet versions even though normal wallet operation has no Demon Vault backend.
 
-## Requirements
-- Release artifacts are built through documented reproducible-build-oriented CI.
-- Windows binaries are Authenticode-signed for production distribution.
-- macOS releases are Developer ID signed and notarized for production distribution.
-- Linux release artifacts receive detached cryptographic signatures/checksums and package-specific signing where applicable.
-- Update metadata is authenticated and rollback/downgrade behavior is controlled.
-- The application never executes unsigned remote code or loads the GUI from a remote website.
-- Dependencies use lockfiles, review, automated vulnerability checks, and minimal feature sets.
-- Release credentials are isolated from source code and ordinary developer builds.
+Requirements:
 
-Automatic updating is not required in Phase 0. Any future updater must preserve the outbound-only network invariant and fail closed on signature or integrity errors.
+- documented reproducible-build-oriented CI;
+- Authenticode signing for production Windows releases;
+- Developer ID signing and notarization for production macOS releases;
+- cryptographic signatures/checksums for Linux artifacts;
+- authenticated update metadata;
+- controlled rollback/downgrade behavior;
+- no unsigned remote code execution;
+- no remotely loaded application UI;
+- locked dependencies and minimal feature sets;
+- isolated release credentials.
+
+Any future automatic updater must preserve the outbound-only network invariant and fail closed on signature or integrity errors.

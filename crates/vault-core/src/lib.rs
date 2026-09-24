@@ -13,7 +13,7 @@ pub enum VaultLockState {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct FoundationStatus {
+pub struct CoreStatus {
     pub lock_state: VaultLockState,
     pub network_policy: NetworkPolicy,
     pub supported_assets: [Asset; 3],
@@ -38,8 +38,8 @@ impl Default for VaultCore {
 }
 
 impl VaultCore {
-    pub fn foundation_status(&self) -> FoundationStatus {
-        FoundationStatus {
+    pub fn status(&self) -> CoreStatus {
+        CoreStatus {
             lock_state: self.lock_state,
             network_policy: self.network_policy,
             supported_assets: [Asset::Bitcoin, Asset::Monero, Asset::Zcash],
@@ -155,18 +155,18 @@ mod tests {
     #[test]
     fn core_starts_locked_and_outbound_only() {
         let core = VaultCore::default();
-        let status = core.foundation_status();
+        let status = core.status();
         assert_eq!(status.lock_state, VaultLockState::Locked);
         assert!(status.network_policy.outbound_only());
         assert_eq!(status.supported_assets.len(), 3);
     }
 
     #[test]
-    fn signing_is_not_available_in_phase_three() {
+    fn signing_is_disabled() {
         let core = VaultCore::default();
         assert_eq!(
             core.authorize(CoreAction::SignTransaction),
-            CoreDecision::Denied("signing is not implemented in Phase 2")
+            CoreDecision::Denied("transaction signing is disabled")
         );
     }
 
@@ -181,19 +181,16 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(core.foundation_status().lock_state, VaultLockState::Locked);
+        assert_eq!(core.status().lock_state, VaultLockState::Locked);
         assert!(core.wallet_secret().is_none());
 
         core.unlock_local_vault(&path, b"correct horse battery staple")
             .unwrap();
-        assert_eq!(
-            core.foundation_status().lock_state,
-            VaultLockState::Unlocked
-        );
+        assert_eq!(core.status().lock_state, VaultLockState::Unlocked);
         assert_eq!(core.wallet_secret().unwrap(), b"synthetic-wallet-secret");
 
         core.lock();
-        assert_eq!(core.foundation_status().lock_state, VaultLockState::Locked);
+        assert_eq!(core.status().lock_state, VaultLockState::Locked);
         assert!(core.wallet_secret().is_none());
 
         fs::remove_dir_all(path.parent().unwrap()).unwrap();
@@ -207,7 +204,7 @@ mod tests {
             .unwrap();
 
         assert!(core.unlock_local_vault(&path, b"wrong-password").is_err());
-        assert_eq!(core.foundation_status().lock_state, VaultLockState::Locked);
+        assert_eq!(core.status().lock_state, VaultLockState::Locked);
         assert!(core.wallet_secret().is_none());
 
         fs::remove_dir_all(path.parent().unwrap()).unwrap();

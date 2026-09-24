@@ -19,7 +19,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn default_policy_preserves_phase_zero_network_invariant() {
+    fn default_policy_is_outbound_only() {
         assert!(NetworkPolicy::default().outbound_only());
     }
 }

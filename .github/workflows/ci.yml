@@ -1,4 +1,4 @@
-name: Phase 3 Cryptographic Vault Validation
+name: CI
 
 on:
   push:
@@ -8,7 +8,7 @@ permissions:
   contents: read
 
 jobs:
-  phase3:
+  test:
     strategy:
       fail-fast: false
       matrix:
@@ -31,14 +31,11 @@ jobs:
       - name: Format
         run: cargo fmt --all --check
 
-      - name: Lint full workspace
+      - name: Lint
         run: cargo clippy --workspace --all-targets -- -D warnings
 
-      - name: Test full workspace
+      - name: Test
         run: cargo test --workspace
 
-      - name: Check full workspace
+      - name: Check
         run: cargo check --workspace
-
-      - name: Validate Phase 0 through Phase 3
-        run: cargo run -- phase3

@@ -1,13 +1,6 @@
-[package]
-name = "demon-vault-security-gates"
-version = "0.0.3"
-edition = "2024"
-publish = false
-
 [workspace]
 resolver = "2"
 members = [
-    ".",
     "crates/vault-core",
     "crates/vault-crypto",
     "crates/vault-policy",
@@ -15,6 +8,3 @@ members = [
     "crates/vault-network",
     "apps/desktop/src-tauri",
 ]
-default-members = ["."]
-
-[dependencies]

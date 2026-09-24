@@ -9,7 +9,7 @@ pub enum Asset {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CoreAction {
-    ViewFoundationStatus,
+    ViewStatus,
     SignTransaction,
     ExportPrivateKey,
 }
@@ -26,12 +26,10 @@ pub struct PolicyEngine;
 impl PolicyEngine {
     pub fn evaluate(&self, action: CoreAction, _vault_unlocked: bool) -> CoreDecision {
         match action {
-            CoreAction::ViewFoundationStatus => CoreDecision::Allowed,
-            CoreAction::SignTransaction => {
-                CoreDecision::Denied("signing is not implemented in Phase 2")
-            }
+            CoreAction::ViewStatus => CoreDecision::Allowed,
+            CoreAction::SignTransaction => CoreDecision::Denied("transaction signing is disabled"),
             CoreAction::ExportPrivateKey => {
-                CoreDecision::Denied("raw private-key export is outside the Phase 2 foundation")
+                CoreDecision::Denied("raw private-key export is disabled")
             }
         }
     }
@@ -42,7 +40,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn phase_two_denies_signing_and_key_export() {
+    fn sensitive_unavailable_operations_are_denied() {
         let engine = PolicyEngine;
         assert!(matches!(
             engine.evaluate(CoreAction::SignTransaction, true),
@@ -52,5 +50,14 @@ mod tests {
             engine.evaluate(CoreAction::ExportPrivateKey, true),
             CoreDecision::Denied(_)
         ));
+    }
+
+    #[test]
+    fn status_is_available_without_unlocking() {
+        let engine = PolicyEngine;
+        assert_eq!(
+            engine.evaluate(CoreAction::ViewStatus, false),
+            CoreDecision::Allowed
+        );
     }
 }
