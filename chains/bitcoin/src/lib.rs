@@ -48,6 +48,8 @@ pub enum BitcoinError {
     InvalidAmount,
     #[error("fee rate must be greater than zero")]
     InvalidFeeRate,
+    #[error("fee rate exceeds the test-wallet safety limit")]
+    ExcessiveFeeRate,
     #[error("transaction construction failed")]
     BuildTransaction,
     #[error("transaction signing failed")]
@@ -137,6 +139,9 @@ impl BitcoinTestWallet {
         }
         if sat_per_vbyte == 0 {
             return Err(BitcoinError::InvalidFeeRate);
+        }
+        if sat_per_vbyte > 100 {
+            return Err(BitcoinError::ExcessiveFeeRate);
         }
 
         let recipient = self.validate_recipient(recipient)?;
@@ -275,6 +280,10 @@ mod tests {
         assert!(matches!(
             wallet.build_payment(&recipient, 50_000, 0),
             Err(BitcoinError::InvalidFeeRate)
+        ));
+        assert!(matches!(
+            wallet.build_payment(&recipient, 50_000, 101),
+            Err(BitcoinError::ExcessiveFeeRate)
         ));
     }
 }
