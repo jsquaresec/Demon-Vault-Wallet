@@ -253,10 +253,20 @@ mod tests {
             value: Amount::from_sat(500),
             script_pubkey: ScriptBuf::new(),
         };
+        let destination = Address::p2wpkh(
+            &bitcoin::CompressedPublicKey::from_slice(&[
+                0x02, 0x7d, 0x7b, 0xa2, 0x55, 0x0c, 0xf9, 0x0f, 0x5f, 0x6b, 0x18, 0x57, 0x5d,
+                0xd7, 0x1f, 0x8f, 0x19, 0x9f, 0x7a, 0x2e, 0x25, 0x9f, 0x63, 0xf7, 0x8b, 0x2f,
+                0x87, 0x6d, 0x55, 0x31, 0x5f, 0x2f, 0x44,
+            ])
+            .unwrap(),
+            Network::Testnet,
+        );
+        let destination = destination.to_string();
         let result = build_unsigned_spend(
             BitcoinNetwork::Testnet,
-            TESTNET_DEST,
-            TESTNET_DEST,
+            &destination,
+            &destination,
             Amount::from_sat(10_000),
             FeeRateSatVb::new(2).unwrap(),
             &[utxo],
