@@ -218,7 +218,10 @@ mod tests {
         ] {
             let mut wallet = BitcoinTestWallet::from_seed(network, &TEST_SEED).unwrap();
             let address = wallet.next_receive_address();
-            assert!(address.is_valid_for_network(network.network()));
+            let validated = wallet
+                .validate_recipient(&address.to_string())
+                .expect("derived address must validate for its test network");
+            assert_eq!(validated, address);
             assert!(wallet.seed_is_loaded());
         }
     }
