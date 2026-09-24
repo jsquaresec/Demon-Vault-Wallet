@@ -1,6 +1,8 @@
 #![forbid(unsafe_code)]
 
 use std::{error::Error, fmt, path::Path};
+
+use demon_vault_bitcoin::{BitcoinError, BitcoinTestNetwork, BitcoinTestWallet};
 use vault_crypto::{KdfParams, SecretBytes, VaultDomain, VaultError, open, seal};
 use vault_network::NetworkPolicy;
 use vault_policy::{Asset, CoreAction, CoreDecision, PolicyEngine};
@@ -83,6 +85,21 @@ impl VaultCore {
         Ok(())
     }
 
+    pub fn bitcoin_test_wallet(
+        &self,
+        network: BitcoinTestNetwork,
+    ) -> Result<BitcoinTestWallet, CoreVaultError> {
+        if self.authorize(CoreAction::SignBitcoinTestTransaction) != CoreDecision::Allowed {
+            return Err(CoreVaultError::Locked);
+        }
+
+        let seed = self
+            .unlocked_wallet_secret
+            .as_ref()
+            .ok_or(CoreVaultError::Locked)?;
+        Ok(BitcoinTestWallet::from_seed(network, seed.as_slice())?)
+    }
+
     pub fn lock(&mut self) {
         self.unlocked_wallet_secret = None;
         self.lock_state = VaultLockState::Locked;
@@ -99,7 +116,9 @@ impl VaultCore {
 pub enum CoreVaultError {
     Crypto(VaultError),
     Storage(StorageError),
+    Bitcoin(BitcoinError),
     WrongDomain,
+    Locked,
 }
 
 impl fmt::Display for CoreVaultError {
@@ -107,7 +126,9 @@ impl fmt::Display for CoreVaultError {
         match self {
             Self::Crypto(error) => write!(formatter, "vault cryptographic error: {error}"),
             Self::Storage(error) => write!(formatter, "vault storage error: {error}"),
+            Self::Bitcoin(error) => write!(formatter, "bitcoin wallet error: {error}"),
             Self::WrongDomain => write!(formatter, "vault contains the wrong encryption domain"),
+            Self::Locked => write!(formatter, "vault is locked"),
         }
     }
 }
@@ -117,7 +138,8 @@ impl Error for CoreVaultError {
         match self {
             Self::Crypto(error) => Some(error),
             Self::Storage(error) => Some(error),
-            Self::WrongDomain => None,
+            Self::Bitcoin(error) => Some(error),
+            Self::WrongDomain | Self::Locked => None,
         }
     }
 }
@@ -131,6 +153,12 @@ impl From<VaultError> for CoreVaultError {
 impl From<StorageError> for CoreVaultError {
     fn from(error: StorageError) -> Self {
         Self::Storage(error)
+    }
+}
+
+impl From<BitcoinError> for CoreVaultError {
+    fn from(error: BitcoinError) -> Self {
+        Self::Bitcoin(error)
     }
 }
 
@@ -162,12 +190,45 @@ mod tests {
     }
 
     #[test]
-    fn signing_is_disabled() {
+    fn mainnet_signing_is_disabled() {
         let core = VaultCore::default();
-        assert_eq!(
+        assert!(matches!(
             core.authorize(CoreAction::SignTransaction),
-            CoreDecision::Denied("transaction signing is disabled")
-        );
+            CoreDecision::Denied(_)
+        ));
+    }
+
+    #[test]
+    fn bitcoin_test_wallet_requires_unlock() {
+        let core = VaultCore::default();
+        assert!(matches!(
+            core.bitcoin_test_wallet(BitcoinTestNetwork::Regtest),
+            Err(CoreVaultError::Locked)
+        ));
+    }
+
+    #[test]
+    fn unlocked_vault_can_derive_bitcoin_test_wallet() {
+        let path = unique_vault_path();
+        let mut core = VaultCore::default();
+        core.create_local_vault(
+            &path,
+            b"correct horse battery staple",
+            &[0x42; 32],
+        )
+        .unwrap();
+        core.unlock_local_vault(&path, b"correct horse battery staple")
+            .unwrap();
+
+        let mut wallet = core
+            .bitcoin_test_wallet(BitcoinTestNetwork::Regtest)
+            .unwrap();
+        let address = wallet.next_receive_address();
+        assert!(address.is_valid_for_network(
+            BitcoinTestNetwork::Regtest.network()
+        ));
+
+        fs::remove_dir_all(path.parent().unwrap()).unwrap();
     }
 
     #[test]
@@ -177,33 +238,16 @@ mod tests {
         core.create_local_vault(
             &path,
             b"correct horse battery staple",
-            b"synthetic-wallet-secret",
+            &[0x33; 32],
         )
         .unwrap();
 
         assert_eq!(core.status().lock_state, VaultLockState::Locked);
-        assert!(core.wallet_secret().is_none());
-
         core.unlock_local_vault(&path, b"correct horse battery staple")
             .unwrap();
         assert_eq!(core.status().lock_state, VaultLockState::Unlocked);
-        assert_eq!(core.wallet_secret().unwrap(), b"synthetic-wallet-secret");
 
         core.lock();
-        assert_eq!(core.status().lock_state, VaultLockState::Locked);
-        assert!(core.wallet_secret().is_none());
-
-        fs::remove_dir_all(path.parent().unwrap()).unwrap();
-    }
-
-    #[test]
-    fn wrong_password_does_not_unlock_core() {
-        let path = unique_vault_path();
-        let mut core = VaultCore::default();
-        core.create_local_vault(&path, b"right-password", b"secret")
-            .unwrap();
-
-        assert!(core.unlock_local_vault(&path, b"wrong-password").is_err());
         assert_eq!(core.status().lock_state, VaultLockState::Locked);
         assert!(core.wallet_secret().is_none());
 

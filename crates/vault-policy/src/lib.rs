@@ -10,6 +10,7 @@ pub enum Asset {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CoreAction {
     ViewStatus,
+    SignBitcoinTestTransaction,
     SignTransaction,
     ExportPrivateKey,
 }
@@ -24,10 +25,14 @@ pub enum CoreDecision {
 pub struct PolicyEngine;
 
 impl PolicyEngine {
-    pub fn evaluate(&self, action: CoreAction, _vault_unlocked: bool) -> CoreDecision {
+    pub fn evaluate(&self, action: CoreAction, vault_unlocked: bool) -> CoreDecision {
         match action {
             CoreAction::ViewStatus => CoreDecision::Allowed,
-            CoreAction::SignTransaction => CoreDecision::Denied("transaction signing is disabled"),
+            CoreAction::SignBitcoinTestTransaction if vault_unlocked => CoreDecision::Allowed,
+            CoreAction::SignBitcoinTestTransaction => {
+                CoreDecision::Denied("vault must be unlocked for bitcoin test signing")
+            }
+            CoreAction::SignTransaction => CoreDecision::Denied("mainnet transaction signing is disabled"),
             CoreAction::ExportPrivateKey => {
                 CoreDecision::Denied("raw private-key export is disabled")
             }
@@ -40,7 +45,20 @@ mod tests {
     use super::*;
 
     #[test]
-    fn sensitive_unavailable_operations_are_denied() {
+    fn bitcoin_test_signing_requires_unlocked_vault() {
+        let engine = PolicyEngine;
+        assert_eq!(
+            engine.evaluate(CoreAction::SignBitcoinTestTransaction, false),
+            CoreDecision::Denied("vault must be unlocked for bitcoin test signing")
+        );
+        assert_eq!(
+            engine.evaluate(CoreAction::SignBitcoinTestTransaction, true),
+            CoreDecision::Allowed
+        );
+    }
+
+    #[test]
+    fn mainnet_signing_and_key_export_remain_denied() {
         let engine = PolicyEngine;
         assert!(matches!(
             engine.evaluate(CoreAction::SignTransaction, true),

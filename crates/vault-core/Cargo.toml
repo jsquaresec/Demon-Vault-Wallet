@@ -1,10 +1,11 @@
 [package]
 name = "vault-core"
-version = "0.0.2"
+version = "0.0.3"
 edition = "2024"
 publish = false
 
 [dependencies]
+demon-vault-bitcoin = { path = "../../chains/bitcoin" }
 vault-crypto = { path = "../vault-crypto" }
 vault-network = { path = "../vault-network" }
 vault-policy = { path = "../vault-policy" }

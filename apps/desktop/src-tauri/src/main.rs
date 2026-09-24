@@ -11,7 +11,7 @@ fn security_status() -> String {
         VaultLockState::Unlocked => "unlocked",
     };
     format!(
-        "vault={lock};crypto-vault=implemented;network=outbound-only;assets=BTC,XMR,ZEC;signing=disabled"
+        "vault={lock};crypto-vault=implemented;network=outbound-only;assets=BTC,XMR,ZEC;btc-testnet=available;btc-mainnet=disabled"
     )
 }
 

@@ -6,5 +6,7 @@ members = [
     "crates/vault-policy",
     "crates/vault-storage",
     "crates/vault-network",
+    "chains/bitcoin",
     "apps/desktop/src-tauri",
+    "tools/bitcoin-test-cli",
 ]

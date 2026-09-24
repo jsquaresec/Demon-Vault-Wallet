@@ -12,9 +12,11 @@ The current codebase provides:
 - domain separation for wallet and integration secrets;
 - zeroizing secret containers;
 - create-only encrypted-vault persistence;
+- a Bitcoin test-network wallet supporting Testnet3, Testnet4, Signet, and Regtest;
+- BIP84 receive/change derivation, network-aware address validation, balance/UTXO state, transaction construction, and local test-network signing;
 - Windows, macOS, and Linux CI.
 
-Transaction signing, live blockchain synchronization, and mainnet wallet operations are intentionally unavailable until their implementations are complete and tested.
+Bitcoin mainnet signing, Monero wallet functionality, Zcash wallet functionality, and production chain synchronization are intentionally unavailable until their implementations are complete and tested.
 
 ## Validation
 
@@ -25,7 +27,7 @@ cargo test --workspace
 cargo check --workspace
 ```
 
-The desktop application lives under `apps/desktop`. Core security components live under `crates/`, and architecture/security documentation lives under `docs/`.
+The desktop application lives under `apps/desktop`. Core security components live under `crates/`, chain adapters live under `chains/`, and architecture/security documentation lives under `docs/`.
 
 ## Cryptographic vault
 
@@ -38,3 +40,9 @@ The local vault uses pinned RustCrypto components:
 - zeroizing containers for decrypted secrets and derived key material.
 
 See `docs/architecture/VAULT.md` and `docs/security/VAULT-SECURITY.md`.
+
+## Bitcoin
+
+The Bitcoin adapter is deliberately test-network-only. It uses BDK/rust-bitcoin for BIP84 wallet derivation, address validation, transaction construction, and local signing.
+
+See `docs/architecture/BITCOIN.md` and `docs/security/BITCOIN-SECURITY.md`.
