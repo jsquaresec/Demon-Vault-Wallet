@@ -63,6 +63,7 @@ const PHASE2_FILES: &[&str] = &[
     "apps/desktop/src-tauri/Cargo.toml",
     "apps/desktop/src-tauri/src/main.rs",
     "apps/desktop/src-tauri/tauri.conf.json",
+    "apps/desktop/src-tauri/icons/icon.png",
     "apps/desktop/ui/index.html",
     "apps/desktop/ui/styles.css",
     "apps/desktop/ui/app.js",
