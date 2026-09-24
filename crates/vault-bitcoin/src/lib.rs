@@ -82,10 +82,7 @@ impl fmt::Display for BitcoinError {
 
 impl Error for BitcoinError {}
 
-pub fn parse_address(
-    value: &str,
-    network: BitcoinNetwork,
-) -> Result<Address, BitcoinError> {
+pub fn parse_address(value: &str, network: BitcoinNetwork) -> Result<Address, BitcoinError> {
     let unchecked = Address::from_str(value).map_err(|_| BitcoinError::InvalidAddress)?;
     unchecked
         .require_network(network.network())
@@ -194,7 +191,11 @@ fn estimate_vbytes(inputs: usize, outputs: usize) -> Result<u64, BitcoinError> {
     let inputs = u64::try_from(inputs).map_err(|_| BitcoinError::ArithmeticOverflow)?;
     let outputs = u64::try_from(outputs).map_err(|_| BitcoinError::ArithmeticOverflow)?;
     10u64
-        .checked_add(inputs.checked_mul(68).ok_or(BitcoinError::ArithmeticOverflow)?)
+        .checked_add(
+            inputs
+                .checked_mul(68)
+                .ok_or(BitcoinError::ArithmeticOverflow)?,
+        )
         .and_then(|v| v.checked_add(outputs.checked_mul(31)?))
         .ok_or(BitcoinError::ArithmeticOverflow)
 }
@@ -226,7 +227,10 @@ mod tests {
     #[test]
     fn mainnet_address_is_rejected_for_testnet() {
         assert!(matches!(
-            parse_address("bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh", BitcoinNetwork::Testnet),
+            parse_address(
+                "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
+                BitcoinNetwork::Testnet
+            ),
             Err(BitcoinError::WrongNetwork)
         ));
     }
