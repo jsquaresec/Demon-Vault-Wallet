@@ -5,8 +5,7 @@ use std::str::FromStr;
 use bdk_wallet::{
     KeychainKind, SignOptions, Wallet,
     bitcoin::{
-        Address, Amount, FeeRate, Network, Psbt, Transaction,
-        address::NetworkUnchecked,
+        Address, Amount, FeeRate, Network, Psbt, Transaction, address::NetworkUnchecked,
         bip32::Xpriv,
     },
     template::Bip84,
@@ -64,10 +63,7 @@ pub struct BitcoinTestWallet {
 }
 
 impl BitcoinTestWallet {
-    pub fn from_seed(
-        network: BitcoinTestNetwork,
-        seed: &[u8],
-    ) -> Result<Self, BitcoinError> {
+    pub fn from_seed(network: BitcoinTestNetwork, seed: &[u8]) -> Result<Self, BitcoinError> {
         if !(16..=64).contains(&seed.len()) {
             return Err(BitcoinError::InvalidSeedLength);
         }
@@ -144,8 +140,8 @@ impl BitcoinTestWallet {
         }
 
         let recipient = self.validate_recipient(recipient)?;
-        let fee_rate = FeeRate::from_sat_per_vb(sat_per_vbyte)
-            .ok_or(BitcoinError::InvalidFeeRate)?;
+        let fee_rate =
+            FeeRate::from_sat_per_vb(sat_per_vbyte).ok_or(BitcoinError::InvalidFeeRate)?;
 
         let mut builder = self.wallet.build_tx();
         builder
@@ -176,11 +172,7 @@ impl BitcoinTestWallet {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bdk_wallet::bitcoin::{
-        absolute::LockTime,
-        transaction::Version,
-        TxOut,
-    };
+    use bdk_wallet::bitcoin::{TxOut, absolute::LockTime, transaction::Version};
 
     const TEST_SEED: [u8; 32] = [0x42; 32];
     const OTHER_SEED: [u8; 32] = [0x24; 32];
@@ -233,8 +225,7 @@ mod tests {
 
     #[test]
     fn mainnet_recipient_is_rejected() {
-        let wallet =
-            BitcoinTestWallet::from_seed(BitcoinTestNetwork::Regtest, &TEST_SEED).unwrap();
+        let wallet = BitcoinTestWallet::from_seed(BitcoinTestNetwork::Regtest, &TEST_SEED).unwrap();
         assert!(matches!(
             wallet.validate_recipient("bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh"),
             Err(BitcoinError::WrongNetwork) | Err(BitcoinError::InvalidAddress)
@@ -260,7 +251,11 @@ mod tests {
 
         let tx = psbt.extract_tx().unwrap();
         assert!(!tx.input.is_empty());
-        assert!(tx.output.iter().any(|output| output.value == Amount::from_sat(50_000)));
+        assert!(
+            tx.output
+                .iter()
+                .any(|output| output.value == Amount::from_sat(50_000))
+        );
     }
 
     #[test]

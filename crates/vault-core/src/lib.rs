@@ -211,12 +211,8 @@ mod tests {
     fn unlocked_vault_can_derive_bitcoin_test_wallet() {
         let path = unique_vault_path();
         let mut core = VaultCore::default();
-        core.create_local_vault(
-            &path,
-            b"correct horse battery staple",
-            &[0x42; 32],
-        )
-        .unwrap();
+        core.create_local_vault(&path, b"correct horse battery staple", &[0x42; 32])
+            .unwrap();
         core.unlock_local_vault(&path, b"correct horse battery staple")
             .unwrap();
 
@@ -224,9 +220,7 @@ mod tests {
             .bitcoin_test_wallet(BitcoinTestNetwork::Regtest)
             .unwrap();
         let address = wallet.next_receive_address();
-        assert!(address.is_valid_for_network(
-            BitcoinTestNetwork::Regtest.network()
-        ));
+        assert!(address.is_valid_for_network(BitcoinTestNetwork::Regtest.network()));
 
         fs::remove_dir_all(path.parent().unwrap()).unwrap();
     }
@@ -235,12 +229,8 @@ mod tests {
     fn local_vault_unlocks_and_locks_without_exposing_via_status() {
         let path = unique_vault_path();
         let mut core = VaultCore::default();
-        core.create_local_vault(
-            &path,
-            b"correct horse battery staple",
-            &[0x33; 32],
-        )
-        .unwrap();
+        core.create_local_vault(&path, b"correct horse battery staple", &[0x33; 32])
+            .unwrap();
 
         assert_eq!(core.status().lock_state, VaultLockState::Locked);
         core.unlock_local_vault(&path, b"correct horse battery staple")

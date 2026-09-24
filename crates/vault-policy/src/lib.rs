@@ -32,7 +32,9 @@ impl PolicyEngine {
             CoreAction::SignBitcoinTestTransaction => {
                 CoreDecision::Denied("vault must be unlocked for bitcoin test signing")
             }
-            CoreAction::SignTransaction => CoreDecision::Denied("mainnet transaction signing is disabled"),
+            CoreAction::SignTransaction => {
+                CoreDecision::Denied("mainnet transaction signing is disabled")
+            }
             CoreAction::ExportPrivateKey => {
                 CoreDecision::Denied("raw private-key export is disabled")
             }
