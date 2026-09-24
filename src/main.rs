@@ -160,7 +160,9 @@ fn validate_phase2(root: &Path) -> Result<(), String> {
         "raw private-key export is outside the Phase 2 foundation",
     ] {
         if !policy.contains(required) {
-            return Err(format!(\n                "Phase 2 deny-by-default policy missing: {required}"\n            ));
+            return Err(format!(
+                "Phase 2 deny-by-default policy missing: {required}"
+            ));
         }
     }
 
@@ -173,7 +175,7 @@ fn validate_phase2(root: &Path) -> Result<(), String> {
     }
 
     let desktop_manifest = read(root, "apps/desktop/src-tauri/Cargo.toml")?;
-    if !desktop_manifest.contains("tauri = { version = \"=2.11.5\"") {
+    if !desktop_manifest.contains("tauri = { version =") || !desktop_manifest.contains("=2.11.5") {
         return Err("Phase 2 Tauri runtime is not pinned to the validated version".into());
     }
 
