@@ -214,8 +214,6 @@ mod tests {
     use super::*;
     use bitcoin::{Txid, hashes::Hash};
 
-    const TESTNET_DEST: &str = "tb1qfm7k4zd4h6h2j8f5y6q7q0w6n0s4x5w2w7s4xq";
-
     #[test]
     fn fee_rate_is_bounded() {
         assert!(FeeRateSatVb::new(0).is_err());
