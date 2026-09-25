@@ -1,6 +1,10 @@
 #![forbid(unsafe_code)]
 
-use monero::{Address, Hash, KeyPair, Network, PrivateKey, PublicKey};
+use monero::{
+    Address, Hash, KeyPair, Network, PrivateKey, PublicKey, Transaction, ViewPair,
+    consensus::deserialize,
+    cryptonote::hash::Hashable,
+};
 use std::{error::Error, fmt, str::FromStr};
 
 const MIN_FEE_PER_BYTE: u64 = 1;
@@ -262,14 +266,23 @@ pub trait MoneroLocalSigner {
     ) -> Result<SignedMoneroTransaction, Self::Error>;
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ChainTransaction {
+    pub height: u64,
+    pub raw_transaction: Vec<u8>,
+}
+
 pub trait MoneroBackend {
     type Error: Error + Send + Sync + 'static;
 
     fn network(&self) -> Result<MoneroNetwork, Self::Error>;
     fn health(&self) -> Result<bool, Self::Error>;
     fn tip_height(&self) -> Result<u64, Self::Error>;
-    fn sync_snapshot(&self, public_spend: PublicKey, private_view: PrivateKey)
-        -> Result<SyncSnapshot, Self::Error>;
+    fn transactions(
+        &self,
+        start_height: u64,
+        end_height: u64,
+    ) -> Result<Vec<ChainTransaction>, Self::Error>;
     fn fee_estimate(&self) -> Result<FeeEstimate, Self::Error>;
     fn broadcast(&self, transaction: &SignedMoneroTransaction) -> Result<(), Self::Error>;
 }
@@ -291,6 +304,8 @@ pub enum MoneroError {
     ArithmeticOverflow,
     AuthorizationMismatch,
     EmptySignedTransaction,
+    MalformedTransaction,
+    UndecodableAmount,
 }
 
 impl fmt::Display for MoneroError {
@@ -311,6 +326,8 @@ impl fmt::Display for MoneroError {
             Self::ArithmeticOverflow => write!(formatter, "Monero amount arithmetic overflow"),
             Self::AuthorizationMismatch => write!(formatter, "Monero signing authorization does not match the transaction intent"),
             Self::EmptySignedTransaction => write!(formatter, "Monero signer returned an empty transaction"),
+            Self::MalformedTransaction => write!(formatter, "Monero backend returned a malformed transaction"),
+            Self::UndecodableAmount => write!(formatter, "Monero output amount could not be decoded locally"),
         }
     }
 }
@@ -358,6 +375,38 @@ pub fn select_node(
             })
         }
     }
+}
+
+pub fn scan_transactions_locally(
+    identity: &WalletIdentity,
+    transactions: &[ChainTransaction],
+) -> Result<Vec<WalletOutput>, MoneroError> {
+    let view_pair = ViewPair {
+        view: *identity.private_view_key(),
+        spend: identity.public_spend_key(),
+    };
+    let mut outputs = Vec::new();
+
+    for item in transactions {
+        let transaction: Transaction =
+            deserialize(&item.raw_transaction).map_err(|_| MoneroError::MalformedTransaction)?;
+        let txid = transaction.hash().to_string();
+        let owned = transaction
+            .check_outputs(&view_pair, 0..1, 0..100)
+            .map_err(|_| MoneroError::MalformedTransaction)?;
+
+        for output in owned {
+            let amount = output.amount().ok_or(MoneroError::UndecodableAmount)?;
+            outputs.push(WalletOutput {
+                id: format!("{txid}:{}", output.index()),
+                amount_piconero: amount.as_pico(),
+                unlock_height: item.height,
+                spent: false,
+            });
+        }
+    }
+
+    Ok(outputs)
 }
 
 pub fn validate_backend_network(
@@ -600,6 +649,57 @@ mod tests {
             validate_authorized_signed_transaction(&intent, wrong, &signed).unwrap_err(),
             MoneroError::AuthorizationMismatch
         );
+    }
+
+    #[test]
+    fn backend_interface_never_receives_wallet_secrets() {
+        fn assert_backend_shape<B: MoneroBackend>(_backend: &B) {}
+        let _ = assert_backend_shape::<MockBackend>;
+    }
+
+    #[derive(Debug)]
+    struct MockError;
+
+    impl fmt::Display for MockError {
+        fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(formatter, "mock error")
+        }
+    }
+
+    impl Error for MockError {}
+
+    struct MockBackend;
+
+    impl MoneroBackend for MockBackend {
+        type Error = MockError;
+
+        fn network(&self) -> Result<MoneroNetwork, Self::Error> {
+            Ok(MoneroNetwork::Stagenet)
+        }
+
+        fn health(&self) -> Result<bool, Self::Error> {
+            Ok(true)
+        }
+
+        fn tip_height(&self) -> Result<u64, Self::Error> {
+            Ok(1)
+        }
+
+        fn transactions(
+            &self,
+            _start_height: u64,
+            _end_height: u64,
+        ) -> Result<Vec<ChainTransaction>, Self::Error> {
+            Ok(vec![])
+        }
+
+        fn fee_estimate(&self) -> Result<FeeEstimate, Self::Error> {
+            FeeEstimate::new(20).map_err(|_| MockError)
+        }
+
+        fn broadcast(&self, _transaction: &SignedMoneroTransaction) -> Result<(), Self::Error> {
+            Ok(())
+        }
     }
 
     #[test]
