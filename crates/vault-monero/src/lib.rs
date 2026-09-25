@@ -1,8 +1,8 @@
 #![forbid(unsafe_code)]
 
 use curve25519_dalek::scalar::Scalar;
-use monero::{Address, KeyPair, Network, PrivateKey, PublicKey};
-use std::{error::Error, fmt, net::IpAddr, str::FromStr};
+use monero::{Address, KeyPair, Network, PrivateKey, PublicKey, Transaction};
+use std::{error::Error, fmt, net::IpAddr, ops::Range, str::FromStr};
 use tiny_keccak::{Hasher, Keccak};
 use zeroize::Zeroizing;
 
@@ -222,6 +222,37 @@ impl MoneroWalletKeys {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReceivedOutput {
+    pub output_index: usize,
+    pub account_index: u32,
+    pub subaddress_index: u32,
+    pub amount_piconero: Option<u64>,
+}
+
+pub fn scan_transaction(
+    transaction: &Transaction,
+    keys: &MoneroWalletKeys,
+    account_range: Range<u32>,
+    subaddress_range: Range<u32>,
+) -> Result<Vec<ReceivedOutput>, MoneroError> {
+    let view_pair = keys.view_pair()?;
+    transaction
+        .check_outputs(&view_pair, account_range, subaddress_range)
+        .map_err(|_| MoneroError::ScanFailed)?
+        .into_iter()
+        .map(|output| {
+            let index = output.sub_index();
+            Ok(ReceivedOutput {
+                output_index: output.index(),
+                account_index: index.major,
+                subaddress_index: index.minor,
+                amount_piconero: output.amount().map(|amount| amount.as_pico()),
+            })
+        })
+        .collect()
+}
+
 pub fn parse_address(value: &str, network: MoneroNetwork) -> Result<Address, MoneroError> {
     let address = Address::from_str(value).map_err(|_| MoneroError::InvalidAddress)?;
     if address.network == Network::Mainnet {
@@ -343,6 +374,7 @@ pub enum MoneroError {
     FeeExceedsAmount,
     AmountTooSmall,
     ArithmeticOverflow,
+    ScanFailed,
 }
 
 impl fmt::Display for MoneroError {
@@ -359,6 +391,7 @@ impl fmt::Display for MoneroError {
             Self::FeeExceedsAmount => "Monero fee exceeds or equals transfer amount",
             Self::AmountTooSmall => "Monero amount must be greater than zero",
             Self::ArithmeticOverflow => "Monero amount arithmetic overflow",
+            Self::ScanFailed => "Monero transaction scan failed",
         };
         f.write_str(message)
     }
@@ -544,6 +577,15 @@ mod tests {
             .total()
             .unwrap_err(),
             MoneroError::InvalidFee
+        );
+    }
+
+    #[test]
+    fn malformed_transaction_scan_fails_closed() {
+        let keys = deterministic_keys();
+        assert_eq!(
+            scan_transaction(&Transaction::default(), &keys, 0..1, 0..20).unwrap_err(),
+            MoneroError::ScanFailed
         );
     }
 
