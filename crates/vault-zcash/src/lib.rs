@@ -2,7 +2,7 @@
 
 use sha2::{Digest, Sha256};
 use std::{convert::Infallible, error::Error, fmt};
-use zcash_address::{ConversionError, ToAddress, TryFromAddress, ZcashAddress, unified};
+use zcash_address::{ConversionError, TryFromAddress, ZcashAddress, unified};
 use zcash_protocol::{PoolType, consensus::NetworkType};
 
 const MAX_ZAT: u64 = 2_100_000_000_000_000;
@@ -532,6 +532,7 @@ impl TryFromAddress for NetworkValidated {
 mod tests {
     use super::*;
     use std::cell::Cell;
+    use zcash_address::ToAddress;
 
     fn sapling_address(network: ZcashNetwork) -> String {
         ZcashAddress::from_sapling(network.network_type(), [7u8; 43]).encode()
