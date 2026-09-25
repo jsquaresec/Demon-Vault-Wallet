@@ -1,5 +1,8 @@
 #![forbid(unsafe_code)]
 
+mod integration;
+pub use integration::*;
+
 use std::{error::Error, fmt};
 
 const MAX_PROVIDER_ID_LEN: usize = 32;
@@ -396,6 +399,8 @@ pub enum SwapError {
     AmountTooSmall,
     UnsafeNotification,
     NotificationFailed,
+    InvalidProviderResponse,
+    ExpiredQuote,
 }
 
 impl fmt::Display for SwapError {
@@ -410,6 +415,8 @@ impl fmt::Display for SwapError {
                 write!(formatter, "swap notification failed privacy validation")
             }
             Self::NotificationFailed => write!(formatter, "swap notification transport failed"),
+            Self::InvalidProviderResponse => write!(formatter, "swap provider returned data that does not match the request"),
+            Self::ExpiredQuote => write!(formatter, "swap quote is expired"),
         }
     }
 }
