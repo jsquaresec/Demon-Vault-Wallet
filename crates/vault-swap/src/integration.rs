@@ -63,10 +63,20 @@ pub enum IntegrationSecretError {
 impl fmt::Display for IntegrationSecretError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Crypto(error) => write!(formatter, "integration credential cryptographic error: {error}"),
-            Self::Storage(error) => write!(formatter, "integration credential storage error: {error}"),
-            Self::WrongDomain => write!(formatter, "integration credential has the wrong encryption domain"),
-            Self::InvalidCredential => write!(formatter, "stored integration credential is invalid"),
+            Self::Crypto(error) => write!(
+                formatter,
+                "integration credential cryptographic error: {error}"
+            ),
+            Self::Storage(error) => {
+                write!(formatter, "integration credential storage error: {error}")
+            }
+            Self::WrongDomain => write!(
+                formatter,
+                "integration credential has the wrong encryption domain"
+            ),
+            Self::InvalidCredential => {
+                write!(formatter, "stored integration credential is invalid")
+            }
         }
     }
 }
@@ -105,8 +115,8 @@ pub fn load_webhook_credential(
         return Err(IntegrationSecretError::WrongDomain);
     }
     let plaintext = open(password, &envelope).map_err(IntegrationSecretError::Crypto)?;
-    let value =
-        std::str::from_utf8(plaintext.as_slice()).map_err(|_| IntegrationSecretError::InvalidCredential)?;
+    let value = std::str::from_utf8(plaintext.as_slice())
+        .map_err(|_| IntegrationSecretError::InvalidCredential)?;
     DiscordWebhookCredential::new(value).map_err(|_| IntegrationSecretError::InvalidCredential)
 }
 
@@ -147,7 +157,10 @@ mod tests {
         AtomicAmount, CoarseSwapStatus, ProviderId, QuoteRequest, SwapAsset, SwapOrderRequest,
         SwapPair, SwapStatus,
     };
-    use std::{cell::RefCell, time::{SystemTime, UNIX_EPOCH}};
+    use std::{
+        cell::RefCell,
+        time::{SystemTime, UNIX_EPOCH},
+    };
 
     #[derive(Debug)]
     struct MockError;
@@ -236,7 +249,10 @@ mod tests {
 
     #[test]
     fn webhook_credential_round_trips_only_through_integration_domain() {
-        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
         let root = std::env::temp_dir().join(format!(
             "demon-vault-integration-{}-{now}",
             std::process::id()
@@ -270,7 +286,9 @@ mod tests {
             amount: AtomicAmount::new(10).unwrap(),
         };
         let quote = provider.quote(&request).unwrap();
-        assert!(validate_provider_quote(&provider, request.pair, request.amount, &quote, 1).is_ok());
+        assert!(
+            validate_provider_quote(&provider, request.pair, request.amount, &quote, 1).is_ok()
+        );
 
         let expired = SwapQuote::new(
             provider.provider_id(),
@@ -282,7 +300,8 @@ mod tests {
         )
         .unwrap();
         assert_eq!(
-            validate_provider_quote(&provider, request.pair, request.amount, &expired, 1).unwrap_err(),
+            validate_provider_quote(&provider, request.pair, request.amount, &expired, 1)
+                .unwrap_err(),
             SwapError::ExpiredQuote
         );
     }
