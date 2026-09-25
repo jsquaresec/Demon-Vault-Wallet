@@ -307,11 +307,7 @@ impl MoneroWallet {
         node_mode: NodeMode,
     ) -> Result<Self, MoneroError> {
         Ok(Self {
-            identity: WalletIdentity::from_private_keys(
-                private_spend,
-                private_view,
-                network,
-            )?,
+            identity: WalletIdentity::from_private_keys(private_spend, private_view, network)?,
             node_mode,
             state: WalletState::default(),
         })
@@ -382,8 +378,7 @@ impl MoneroWallet {
                 .map(|(txid, _)| txid)
                 .unwrap_or(output.id.as_str())
                 .to_owned();
-            let amount =
-                i128::from(output.amount_piconero);
+            let amount = i128::from(output.amount_piconero);
             let entry = history_by_tx.entry(txid).or_default();
             *entry = entry
                 .checked_add(amount)
@@ -922,11 +917,7 @@ mod tests {
             _exact_authorization: [u8; 32],
         ) -> Result<SignedMoneroTransaction, Self::Error> {
             Ok(SignedMoneroTransaction {
-                raw_transaction: if self.empty {
-                    vec![]
-                } else {
-                    vec![1, 2, 3]
-                },
+                raw_transaction: if self.empty { vec![] } else { vec![1, 2, 3] },
             })
         }
     }
