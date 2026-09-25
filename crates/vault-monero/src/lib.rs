@@ -26,17 +26,12 @@ impl MoneroNetwork {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum NodeMode {
+    #[default]
     AutomaticRemote,
     CustomRemote(String),
     LocalNode(String),
-}
-
-impl Default for NodeMode {
-    fn default() -> Self {
-        Self::AutomaticRemote
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
