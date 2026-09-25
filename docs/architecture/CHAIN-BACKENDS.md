@@ -28,7 +28,15 @@ Transaction intents bind network, destination, amount, and fee into an exact aut
 
 ## Zcash
 
-The adapter must support the selected shielded architecture without misrepresenting transparent transactions as private.
+Zcash currently operates on Testnet or Regtest; mainnet remains unavailable until release-candidate validation. Address parsing uses the official Zcash address/protocol crates and validates the configured network before an address can enter a transaction intent.
+
+Recipients are classified as transparent or shielded-capable. Shielded-only policy rejects transparent-only recipients rather than presenting them as private. Unified, Sapling, Orchard-capable, and legacy shielded receivers remain distinguishable from transparent-only addresses.
+
+The remote backend is untrusted and exposes only health, network identity, tip height, compact-block retrieval, bounded fee estimates, and broadcast. Compact chain data is handed to a local scanner interface; private viewing material is not part of the backend interface.
+
+Shielded notes, balances, history, synchronization height, duplicate-note detection, and deep-reorganization checks live in the wallet state. Transaction intents bind network, canonical recipient, amount, fee, and privacy policy into an exact authorization digest. The local signer must return a non-empty transaction matching that exact authorization before the backend can broadcast it.
+
+Production shielded proof construction and key derivation remain behind the local signer/scanner boundary and are not represented as verified until concrete protocol implementations are connected and audited.
 
 ## Common rules
 

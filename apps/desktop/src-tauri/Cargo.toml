@@ -11,3 +11,4 @@ tauri-build = "=2.6.3"
 tauri = { version = "=2.11.5", features = [] }
 vault-core = { path = "../../../crates/vault-core" }
 vault-monero = { path = "../../../crates/vault-monero" }
+vault-zcash = { path = "../../../crates/vault-zcash" }

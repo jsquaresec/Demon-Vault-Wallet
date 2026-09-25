@@ -11,3 +11,4 @@ vault-network = { path = "../vault-network" }
 vault-monero = { path = "../vault-monero" }
 vault-policy = { path = "../vault-policy" }
 vault-storage = { path = "../vault-storage" }
+vault-zcash = { path = "../vault-zcash" }

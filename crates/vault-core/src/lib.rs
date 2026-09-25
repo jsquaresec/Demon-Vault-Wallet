@@ -6,6 +6,7 @@ use vault_monero::{MoneroNetwork, NodeMode};
 use vault_network::NetworkPolicy;
 use vault_policy::{Asset, CoreAction, CoreDecision, PolicyEngine};
 use vault_storage::{StorageError, read_envelope, write_new_envelope_atomic};
+use vault_zcash::{PrivacyPolicy, ZcashNetwork};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum VaultLockState {
@@ -73,6 +74,8 @@ pub struct VaultCore {
     network_policy: NetworkPolicy,
     monero_network: MoneroNetwork,
     monero_node_mode: NodeMode,
+    zcash_network: ZcashNetwork,
+    zcash_privacy_policy: PrivacyPolicy,
     unlocked_wallet_secret: Option<SecretBytes>,
 }
 
@@ -84,6 +87,8 @@ impl Default for VaultCore {
             network_policy: NetworkPolicy::default(),
             monero_network: MoneroNetwork::Mainnet,
             monero_node_mode: NodeMode::default(),
+            zcash_network: ZcashNetwork::Testnet,
+            zcash_privacy_policy: PrivacyPolicy::ShieldedRequired,
             unlocked_wallet_secret: None,
         }
     }
@@ -104,6 +109,14 @@ impl VaultCore {
 
     pub fn monero_node_mode(&self) -> &NodeMode {
         &self.monero_node_mode
+    }
+
+    pub fn zcash_network(&self) -> ZcashNetwork {
+        self.zcash_network
+    }
+
+    pub fn zcash_privacy_policy(&self) -> PrivacyPolicy {
+        self.zcash_privacy_policy
     }
 
     pub fn security_report(&self) -> SecurityReport {
@@ -163,6 +176,12 @@ impl VaultCore {
                     control: "Monero remote-node trust",
                     assurance: Assurance::Configured,
                     detail: "Remote Monero nodes are untrusted and receive no wallet private keys",
+                },
+                SecurityFinding {
+                    category: SecurityCategory::Privacy,
+                    control: "Zcash shielded recipient policy",
+                    assurance: Assurance::Configured,
+                    detail: "Zcash defaults to shielded-only recipients and labels transparent addresses as non-private",
                 },
                 SecurityFinding {
                     category: SecurityCategory::Application,
@@ -355,6 +374,14 @@ mod tests {
         let core = VaultCore::default();
         assert_eq!(core.monero_network(), MoneroNetwork::Mainnet);
         assert_eq!(core.monero_node_mode(), &NodeMode::AutomaticRemote);
+        assert!(core.status().network_policy.outbound_only());
+    }
+
+    #[test]
+    fn zcash_defaults_to_testnet_and_shielded_only_policy() {
+        let core = VaultCore::default();
+        assert_eq!(core.zcash_network(), ZcashNetwork::Testnet);
+        assert_eq!(core.zcash_privacy_policy(), PrivacyPolicy::ShieldedRequired);
         assert!(core.status().network_policy.outbound_only());
     }
 

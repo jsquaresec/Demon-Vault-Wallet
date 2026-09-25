@@ -84,3 +84,38 @@ async function loadMonero() {
   }
 }
 loadMonero();
+
+
+async function loadZcash() {
+  const status = document.getElementById("zcashStatus");
+  const details = document.getElementById("zcashDetails");
+  try {
+    if (!window.__TAURI__?.core?.invoke) return;
+    const raw = await window.__TAURI__.core.invoke("zcash_status");
+    const values = Object.fromEntries(raw.split(";").map((part) => part.split("=")));
+    status.textContent = `${values.privacy} · ${values.network}`;
+    details.replaceChildren();
+    [
+      ["Network", values.network],
+      ["Privacy policy", values.privacy],
+      ["Transparent addresses", values.transparent],
+      ["Shielded scanner", values.scanner],
+      ["Signer", values.signer],
+      ["Backend trust", values.backend],
+    ].forEach(([label, value]) => {
+      const row = document.createElement("div");
+      row.className = "check-row";
+      const left = document.createElement("span");
+      left.textContent = label;
+      const right = document.createElement("strong");
+      right.className = value === "local-only" || value === "shielded-required" ? "good" : "pending";
+      right.textContent = value;
+      row.append(left, right);
+      details.append(row);
+    });
+  } catch {
+    status.textContent = "Zcash state unavailable";
+    details.textContent = "Unable to read Zcash configuration from the Rust core.";
+  }
+}
+loadZcash();

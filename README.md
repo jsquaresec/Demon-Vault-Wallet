@@ -16,9 +16,11 @@ The current codebase provides:
 - Bitcoin UTXO, bounded fee-rate, unsigned transaction-construction, and replaceable backend foundations;
 - Monero deterministic wallet identity, address/network validation, local ownership scanning, wallet state, bounded fee estimates, and exact transaction authorization;
 - Monero automatic remote, custom remote, and loopback-only local-node selection with an untrusted backend boundary;
+- Zcash network-aware address parsing with explicit shielded-versus-transparent classification;
+- Zcash shielded wallet-state, local scanning, bounded fees, exact authorization, local-signing, and untrusted-backend boundaries;
 - Windows, macOS, and Linux CI.
 
-Bitcoin mainnet is disabled. Generic Bitcoin transaction signing remains disabled. Monero wallet and node primitives are implemented with a local-only signing boundary; live daemon transport and production transaction signing are not represented as verified until a concrete signer/backend is connected and tested. Zcash chain functionality is not yet implemented.
+Bitcoin mainnet is disabled. Generic Bitcoin transaction signing remains disabled. Monero wallet and node primitives are implemented with a local-only signing boundary. Zcash defaults to testnet with shielded-only recipients; transparent addresses are explicitly labeled non-private. Live Zcash backend transport and production proof/signing implementations are not represented as verified until concrete local scanner/signer integrations are connected and tested.
 
 ## Validation
 
