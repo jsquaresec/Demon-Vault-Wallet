@@ -281,6 +281,180 @@ pub trait MoneroBackend {
     fn broadcast(&self, transaction: &SignedMoneroTransaction) -> Result<(), Self::Error>;
 }
 
+pub struct MoneroWallet {
+    identity: WalletIdentity,
+    node_mode: NodeMode,
+    state: WalletState,
+}
+
+impl MoneroWallet {
+    pub fn from_seed(
+        seed: &[u8],
+        network: MoneroNetwork,
+        node_mode: NodeMode,
+    ) -> Result<Self, MoneroError> {
+        Ok(Self {
+            identity: WalletIdentity::from_seed(seed, network)?,
+            node_mode,
+            state: WalletState::default(),
+        })
+    }
+
+    pub fn import_private_keys(
+        private_spend: PrivateKey,
+        private_view: PrivateKey,
+        network: MoneroNetwork,
+        node_mode: NodeMode,
+    ) -> Result<Self, MoneroError> {
+        Ok(Self {
+            identity: WalletIdentity::from_private_keys(
+                private_spend,
+                private_view,
+                network,
+            )?,
+            node_mode,
+            state: WalletState::default(),
+        })
+    }
+
+    pub fn address(&self) -> String {
+        self.identity.address()
+    }
+
+    pub fn network(&self) -> MoneroNetwork {
+        self.identity.network()
+    }
+
+    pub fn node_mode(&self) -> &NodeMode {
+        &self.node_mode
+    }
+
+    pub fn state(&self) -> &WalletState {
+        &self.state
+    }
+
+    pub fn balance(&self) -> Result<u64, MoneroError> {
+        self.state.unlocked_balance()
+    }
+
+    pub fn history(&self) -> &[HistoryEntry] {
+        &self.state.history
+    }
+
+    pub fn sync<B: MoneroBackend>(&mut self, backend: &B) -> Result<(), MoneroError> {
+        if !backend
+            .health()
+            .map_err(|_| MoneroError::BackendUnavailable)?
+        {
+            return Err(MoneroError::BackendUnhealthy);
+        }
+
+        let reported_network = backend
+            .network()
+            .map_err(|_| MoneroError::BackendUnavailable)?;
+        validate_backend_network(self.network(), reported_network)?;
+
+        let tip = backend
+            .tip_height()
+            .map_err(|_| MoneroError::BackendUnavailable)?;
+        let start_height = self.state.scanned_height.saturating_sub(20);
+        let transactions = backend
+            .transactions(start_height, tip)
+            .map_err(|_| MoneroError::BackendUnavailable)?;
+        let newly_scanned = scan_transactions_locally(&self.identity, &transactions)?;
+
+        let mut outputs = self
+            .state
+            .outputs
+            .iter()
+            .filter(|output| output.unlock_height < start_height)
+            .cloned()
+            .collect::<Vec<_>>();
+        outputs.extend(newly_scanned);
+        outputs.sort_by(|left, right| left.id.cmp(&right.id));
+        outputs.dedup_by(|left, right| left.id == right.id);
+
+        let mut history_by_tx = std::collections::BTreeMap::<String, i128>::new();
+        for output in &outputs {
+            let txid = output
+                .id
+                .split_once(':')
+                .map(|(txid, _)| txid)
+                .unwrap_or(output.id.as_str())
+                .to_owned();
+            let amount =
+                i128::from(output.amount_piconero);
+            let entry = history_by_tx.entry(txid).or_default();
+            *entry = entry
+                .checked_add(amount)
+                .ok_or(MoneroError::ArithmeticOverflow)?;
+        }
+        let history = history_by_tx
+            .into_iter()
+            .map(|(txid, amount_delta_piconero)| HistoryEntry {
+                txid,
+                height: None,
+                amount_delta_piconero,
+            })
+            .collect();
+
+        self.state.apply_snapshot(SyncSnapshot {
+            network: self.network(),
+            scanned_height: tip,
+            chain_height: tip,
+            outputs,
+            history,
+        })
+    }
+
+    pub fn prepare_spend<B: MoneroBackend>(
+        &self,
+        backend: &B,
+        destination: &str,
+        amount_piconero: u64,
+    ) -> Result<SpendIntent, MoneroError> {
+        let reported_network = backend
+            .network()
+            .map_err(|_| MoneroError::BackendUnavailable)?;
+        validate_backend_network(self.network(), reported_network)?;
+
+        if amount_piconero > self.balance()? {
+            return Err(MoneroError::InsufficientFunds);
+        }
+        let fee = backend
+            .fee_estimate()
+            .map_err(|_| MoneroError::BackendUnavailable)?;
+        SpendIntent::new(self.network(), destination, amount_piconero, fee)
+    }
+
+    pub fn sign_and_broadcast<B, S>(
+        &self,
+        backend: &B,
+        signer: &S,
+        intent: &SpendIntent,
+    ) -> Result<SignedMoneroTransaction, MoneroError>
+    where
+        B: MoneroBackend,
+        S: MoneroLocalSigner,
+    {
+        validate_backend_network(self.network(), intent.network)?;
+        let reported_network = backend
+            .network()
+            .map_err(|_| MoneroError::BackendUnavailable)?;
+        validate_backend_network(self.network(), reported_network)?;
+
+        let authorization = intent.authorization_binding();
+        let signed = signer
+            .sign(&self.identity, intent, authorization)
+            .map_err(|_| MoneroError::SigningFailed)?;
+        validate_authorized_signed_transaction(intent, authorization, &signed)?;
+        backend
+            .broadcast(&signed)
+            .map_err(|_| MoneroError::BackendUnavailable)?;
+        Ok(signed)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MoneroError {
     InvalidSeed,
@@ -300,6 +474,10 @@ pub enum MoneroError {
     EmptySignedTransaction,
     MalformedTransaction,
     UndecodableAmount,
+    BackendUnavailable,
+    BackendUnhealthy,
+    SigningFailed,
+    InsufficientFunds,
 }
 
 impl fmt::Display for MoneroError {
@@ -346,6 +524,10 @@ impl fmt::Display for MoneroError {
                 formatter,
                 "Monero output amount could not be decoded locally"
             ),
+            Self::BackendUnavailable => write!(formatter, "Monero backend is unavailable"),
+            Self::BackendUnhealthy => write!(formatter, "Monero backend reported unhealthy status"),
+            Self::SigningFailed => write!(formatter, "Monero local signing failed"),
+            Self::InsufficientFunds => write!(formatter, "insufficient unlocked Monero balance"),
         }
     }
 }
@@ -724,6 +906,141 @@ mod tests {
         fn broadcast(&self, _transaction: &SignedMoneroTransaction) -> Result<(), Self::Error> {
             Ok(())
         }
+    }
+
+    struct EmptySigner {
+        empty: bool,
+    }
+
+    impl MoneroLocalSigner for EmptySigner {
+        type Error = MockError;
+
+        fn sign(
+            &self,
+            _identity: &WalletIdentity,
+            _intent: &SpendIntent,
+            _exact_authorization: [u8; 32],
+        ) -> Result<SignedMoneroTransaction, Self::Error> {
+            Ok(SignedMoneroTransaction {
+                raw_transaction: if self.empty {
+                    vec![]
+                } else {
+                    vec![1, 2, 3]
+                },
+            })
+        }
+    }
+
+    struct GateBackend {
+        network: MoneroNetwork,
+        healthy: bool,
+        broadcast_count: std::cell::Cell<u32>,
+    }
+
+    impl MoneroBackend for GateBackend {
+        type Error = MockError;
+
+        fn network(&self) -> Result<MoneroNetwork, Self::Error> {
+            Ok(self.network)
+        }
+
+        fn health(&self) -> Result<bool, Self::Error> {
+            Ok(self.healthy)
+        }
+
+        fn tip_height(&self) -> Result<u64, Self::Error> {
+            Ok(42)
+        }
+
+        fn transactions(
+            &self,
+            _start_height: u64,
+            _end_height: u64,
+        ) -> Result<Vec<ChainTransaction>, Self::Error> {
+            Ok(vec![])
+        }
+
+        fn fee_estimate(&self) -> Result<FeeEstimate, Self::Error> {
+            Ok(FeeEstimate::new(20).unwrap())
+        }
+
+        fn broadcast(&self, _transaction: &SignedMoneroTransaction) -> Result<(), Self::Error> {
+            self.broadcast_count.set(self.broadcast_count.get() + 1);
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn wallet_sync_validates_backend_identity_and_health() {
+        let mut wallet = MoneroWallet::from_seed(
+            &[9u8; 32],
+            MoneroNetwork::Stagenet,
+            NodeMode::AutomaticRemote,
+        )
+        .unwrap();
+        let healthy = GateBackend {
+            network: MoneroNetwork::Stagenet,
+            healthy: true,
+            broadcast_count: std::cell::Cell::new(0),
+        };
+        wallet.sync(&healthy).unwrap();
+        assert_eq!(wallet.state().scanned_height, 42);
+
+        let wrong_network = GateBackend {
+            network: MoneroNetwork::Mainnet,
+            healthy: true,
+            broadcast_count: std::cell::Cell::new(0),
+        };
+        assert_eq!(
+            wallet.sync(&wrong_network).unwrap_err(),
+            MoneroError::BackendNetworkMismatch
+        );
+
+        let unhealthy = GateBackend {
+            network: MoneroNetwork::Stagenet,
+            healthy: false,
+            broadcast_count: std::cell::Cell::new(0),
+        };
+        assert_eq!(
+            wallet.sync(&unhealthy).unwrap_err(),
+            MoneroError::BackendUnhealthy
+        );
+    }
+
+    #[test]
+    fn broadcast_occurs_only_after_local_signing_and_exact_authorization() {
+        let wallet = MoneroWallet::from_seed(
+            &[11u8; 32],
+            MoneroNetwork::Stagenet,
+            NodeMode::AutomaticRemote,
+        )
+        .unwrap();
+        let backend = GateBackend {
+            network: MoneroNetwork::Stagenet,
+            healthy: true,
+            broadcast_count: std::cell::Cell::new(0),
+        };
+        let destination = identity(MoneroNetwork::Stagenet).address();
+        let intent = SpendIntent::new(
+            MoneroNetwork::Stagenet,
+            &destination,
+            1,
+            FeeEstimate::new(20).unwrap(),
+        )
+        .unwrap();
+
+        assert_eq!(
+            wallet
+                .sign_and_broadcast(&backend, &EmptySigner { empty: true }, &intent)
+                .unwrap_err(),
+            MoneroError::EmptySignedTransaction
+        );
+        assert_eq!(backend.broadcast_count.get(), 0);
+
+        wallet
+            .sign_and_broadcast(&backend, &EmptySigner { empty: false }, &intent)
+            .unwrap();
+        assert_eq!(backend.broadcast_count.get(), 1);
     }
 
     #[test]
