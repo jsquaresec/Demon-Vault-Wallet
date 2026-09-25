@@ -2,13 +2,8 @@
 
 use sha2::{Digest, Sha256};
 use std::{convert::Infallible, error::Error, fmt};
-use zcash_address::{
-    ConversionError, ToAddress, TryFromAddress, ZcashAddress, unified,
-};
-use zcash_protocol::{
-    PoolType,
-    consensus::NetworkType,
-};
+use zcash_address::{ConversionError, ToAddress, TryFromAddress, ZcashAddress, unified};
+use zcash_protocol::{PoolType, consensus::NetworkType};
 
 const MAX_ZAT: u64 = 2_100_000_000_000_000;
 const MAX_FEE_ZAT: u64 = 1_000_000_000;
@@ -379,7 +374,10 @@ impl fmt::Display for ZcashError {
             Self::InvalidAddress => write!(formatter, "invalid Zcash address"),
             Self::WrongNetwork => write!(formatter, "Zcash address is for the wrong network"),
             Self::TransparentRecipientRejected => {
-                write!(formatter, "transparent Zcash recipient rejected by shielded-only policy")
+                write!(
+                    formatter,
+                    "transparent Zcash recipient rejected by shielded-only policy"
+                )
             }
             Self::InvalidAmount => write!(formatter, "invalid Zcash amount"),
             Self::InvalidFeeEstimate => write!(formatter, "invalid Zcash fee estimate"),
@@ -387,13 +385,19 @@ impl fmt::Display for ZcashError {
             Self::DuplicateNote => write!(formatter, "duplicate Zcash shielded note"),
             Self::ArithmeticOverflow => write!(formatter, "Zcash amount arithmetic overflow"),
             Self::SuspiciousReorg => write!(formatter, "suspiciously deep Zcash reorganization"),
-            Self::BackendNetworkMismatch => write!(formatter, "Zcash backend reported the wrong network"),
+            Self::BackendNetworkMismatch => {
+                write!(formatter, "Zcash backend reported the wrong network")
+            }
             Self::BackendUnavailable => write!(formatter, "Zcash backend is unavailable"),
             Self::BackendUnhealthy => write!(formatter, "Zcash backend reported unhealthy status"),
             Self::ScanFailed => write!(formatter, "local Zcash shielded scanning failed"),
             Self::SigningFailed => write!(formatter, "local Zcash signing failed"),
-            Self::AuthorizationMismatch => write!(formatter, "Zcash signing authorization mismatch"),
-            Self::EmptySignedTransaction => write!(formatter, "Zcash signer returned an empty transaction"),
+            Self::AuthorizationMismatch => {
+                write!(formatter, "Zcash signing authorization mismatch")
+            }
+            Self::EmptySignedTransaction => {
+                write!(formatter, "Zcash signer returned an empty transaction")
+            }
             Self::InsufficientFunds => write!(formatter, "insufficient shielded Zcash balance"),
         }
     }
@@ -715,8 +719,7 @@ mod tests {
 
     #[test]
     fn shielded_sync_is_local_and_backend_network_is_validated() {
-        let mut wallet =
-            ZcashWallet::new(ZcashNetwork::Testnet, PrivacyPolicy::ShieldedRequired);
+        let mut wallet = ZcashWallet::new(ZcashNetwork::Testnet, PrivacyPolicy::ShieldedRequired);
         let backend = MockBackend {
             network: ZcashNetwork::Testnet,
             healthy: true,
@@ -784,6 +787,9 @@ mod tests {
             PrivacyPolicy::ShieldedRequired,
         )
         .unwrap();
-        assert_ne!(first.authorization_binding(), second.authorization_binding());
+        assert_ne!(
+            first.authorization_binding(),
+            second.authorization_binding()
+        );
     }
 }

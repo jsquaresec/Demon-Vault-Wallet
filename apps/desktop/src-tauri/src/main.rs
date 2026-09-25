@@ -80,7 +80,11 @@ fn security_status() -> String {
 
 fn main() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![security_status, monero_status, zcash_status])
+        .invoke_handler(tauri::generate_handler![
+            security_status,
+            monero_status,
+            zcash_status
+        ])
         .run(tauri::generate_context!())
         .expect("failed to run Demon Vault desktop application");
 }
