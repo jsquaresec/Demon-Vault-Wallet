@@ -415,7 +415,10 @@ impl fmt::Display for SwapError {
                 write!(formatter, "swap notification failed privacy validation")
             }
             Self::NotificationFailed => write!(formatter, "swap notification transport failed"),
-            Self::InvalidProviderResponse => write!(formatter, "swap provider returned data that does not match the request"),
+            Self::InvalidProviderResponse => write!(
+                formatter,
+                "swap provider returned data that does not match the request"
+            ),
             Self::ExpiredQuote => write!(formatter, "swap quote is expired"),
         }
     }
