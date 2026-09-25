@@ -388,11 +388,9 @@ mod tests {
                 .iter()
                 .any(|f| f.control == "Release signature" && f.assurance == Assurance::Unknown)
         );
-        assert!(
-            report.findings.iter().any(|f| {
-                f.control == "Swap notification privacy" && f.assurance == Assurance::Verified
-            })
-        );
+        assert!(report.findings.iter().any(|f| {
+            f.control == "Swap notification privacy" && f.assurance == Assurance::Verified
+        }));
         assert!(report.verified_count() >= 3);
         assert!(report.unknown_count() >= 1);
     }
