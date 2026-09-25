@@ -37,7 +37,9 @@ fn monero_status() -> String {
         NodeMode::CustomRemote(_) => "custom-remote",
         NodeMode::LocalNode(_) => "local-node",
     };
-    format!("network={network};mode={mode};keys=local-only;remote-trust=untrusted;privacy=remote-node-may-observe-network-metadata")
+    format!(
+        "network={network};mode={mode};keys=local-only;remote-trust=untrusted;privacy=remote-node-may-observe-network-metadata"
+    )
 }
 
 #[tauri::command]

@@ -2,8 +2,7 @@
 
 use monero::{
     Address, Hash, KeyPair, Network, PrivateKey, PublicKey, Transaction, ViewPair,
-    consensus::deserialize,
-    cryptonote::hash::Hashable,
+    consensus::deserialize, cryptonote::hash::Hashable,
 };
 use std::{error::Error, fmt, str::FromStr};
 
@@ -316,18 +315,42 @@ impl fmt::Display for MoneroError {
             Self::InvalidAddress => write!(formatter, "invalid Monero address"),
             Self::WrongNetwork => write!(formatter, "Monero address is for the wrong network"),
             Self::InvalidNodeEndpoint => write!(formatter, "invalid Monero node endpoint"),
-            Self::NoHealthyRemoteNode => write!(formatter, "no healthy Monero remote node is available"),
-            Self::BackendNetworkMismatch => write!(formatter, "Monero backend reported the wrong network"),
-            Self::InvalidFeeEstimate => write!(formatter, "Monero fee estimate is outside the allowed range"),
+            Self::NoHealthyRemoteNode => {
+                write!(formatter, "no healthy Monero remote node is available")
+            }
+            Self::BackendNetworkMismatch => {
+                write!(formatter, "Monero backend reported the wrong network")
+            }
+            Self::InvalidFeeEstimate => write!(
+                formatter,
+                "Monero fee estimate is outside the allowed range"
+            ),
             Self::AmountTooSmall => write!(formatter, "Monero amount must be greater than zero"),
-            Self::DuplicateOutput => write!(formatter, "Monero sync response contains duplicate outputs"),
-            Self::InvalidSyncHeight => write!(formatter, "Monero sync response contains invalid heights"),
-            Self::SuspiciousReorg => write!(formatter, "Monero backend reported an unexpectedly deep reorganization"),
+            Self::DuplicateOutput => {
+                write!(formatter, "Monero sync response contains duplicate outputs")
+            }
+            Self::InvalidSyncHeight => {
+                write!(formatter, "Monero sync response contains invalid heights")
+            }
+            Self::SuspiciousReorg => write!(
+                formatter,
+                "Monero backend reported an unexpectedly deep reorganization"
+            ),
             Self::ArithmeticOverflow => write!(formatter, "Monero amount arithmetic overflow"),
-            Self::AuthorizationMismatch => write!(formatter, "Monero signing authorization does not match the transaction intent"),
-            Self::EmptySignedTransaction => write!(formatter, "Monero signer returned an empty transaction"),
-            Self::MalformedTransaction => write!(formatter, "Monero backend returned a malformed transaction"),
-            Self::UndecodableAmount => write!(formatter, "Monero output amount could not be decoded locally"),
+            Self::AuthorizationMismatch => write!(
+                formatter,
+                "Monero signing authorization does not match the transaction intent"
+            ),
+            Self::EmptySignedTransaction => {
+                write!(formatter, "Monero signer returned an empty transaction")
+            }
+            Self::MalformedTransaction => {
+                write!(formatter, "Monero backend returned a malformed transaction")
+            }
+            Self::UndecodableAmount => write!(
+                formatter,
+                "Monero output amount could not be decoded locally"
+            ),
         }
     }
 }
@@ -507,7 +530,9 @@ mod tests {
         let second = identity(MoneroNetwork::Stagenet);
         assert_eq!(first.address(), second.address());
         assert_eq!(
-            parse_address(&first.address(), MoneroNetwork::Stagenet).unwrap().network,
+            parse_address(&first.address(), MoneroNetwork::Stagenet)
+                .unwrap()
+                .network,
             Network::Stagenet
         );
         assert!(!format!("{first:?}").contains(&first.private_spend_key().to_string()));
@@ -545,21 +570,27 @@ mod tests {
             },
         ];
         assert_eq!(
-            select_node(&NodeMode::AutomaticRemote, MoneroNetwork::Mainnet, &candidates)
-                .unwrap()
-                .endpoint,
+            select_node(
+                &NodeMode::AutomaticRemote,
+                MoneroNetwork::Mainnet,
+                &candidates
+            )
+            .unwrap()
+            .endpoint,
             "https://node-b.example"
         );
     }
 
     #[test]
     fn local_mode_requires_loopback() {
-        assert!(select_node(
-            &NodeMode::LocalNode("http://127.0.0.1:18081".into()),
-            MoneroNetwork::Mainnet,
-            &[]
-        )
-        .is_ok());
+        assert!(
+            select_node(
+                &NodeMode::LocalNode("http://127.0.0.1:18081".into()),
+                MoneroNetwork::Mainnet,
+                &[]
+            )
+            .is_ok()
+        );
         assert_eq!(
             select_node(
                 &NodeMode::LocalNode("https://remote.example:18081".into()),
@@ -639,9 +670,7 @@ mod tests {
         let signed = SignedMoneroTransaction {
             raw_transaction: vec![1, 2, 3],
         };
-        assert!(
-            validate_authorized_signed_transaction(&intent, authorization, &signed).is_ok()
-        );
+        assert!(validate_authorized_signed_transaction(&intent, authorization, &signed).is_ok());
 
         let mut wrong = authorization;
         wrong[0] ^= 1;
