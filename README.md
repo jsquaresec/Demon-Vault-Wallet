@@ -18,9 +18,10 @@ The current codebase provides:
 - Monero automatic remote, custom remote, and loopback-only local-node selection with an untrusted backend boundary;
 - Zcash network-aware address parsing with explicit shielded-versus-transparent classification;
 - Zcash shielded wallet-state, local scanning, bounded fees, exact authorization, local-signing, and untrusted-backend boundaries;
+- SwapDesk provider isolation, quote/order validation, encrypted integration credentials, and best-effort sanitized Discord notifications;
 - Windows, macOS, and Linux CI.
 
-Bitcoin mainnet is disabled. Generic Bitcoin transaction signing remains disabled. Monero wallet and node primitives are implemented with a local-only signing boundary. Zcash defaults to testnet with shielded-only recipients; transparent addresses are explicitly labeled non-private. Live Zcash backend transport and production proof/signing implementations are not represented as verified until concrete local scanner/signer integrations are connected and tested.
+Bitcoin mainnet is disabled. Generic Bitcoin transaction signing remains disabled. Monero wallet and node primitives are implemented with a local-only signing boundary. Zcash defaults to testnet with shielded-only recipients; transparent addresses are explicitly labeled non-private. Live Zcash backend transport and production proof/signing implementations are not represented as verified until concrete local scanner/signer integrations are connected and tested. SwapDesk exposes a replaceable provider boundary rather than embedding a custodial exchange; an actual swap provider must be supplied through that boundary.
 
 ## Validation
 
