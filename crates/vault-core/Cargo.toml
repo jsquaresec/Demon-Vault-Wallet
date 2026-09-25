@@ -8,5 +8,6 @@ publish = false
 vault-bitcoin = { path = "../vault-bitcoin" }
 vault-crypto = { path = "../vault-crypto" }
 vault-network = { path = "../vault-network" }
+vault-monero = { path = "../vault-monero" }
 vault-policy = { path = "../vault-policy" }
 vault-storage = { path = "../vault-storage" }

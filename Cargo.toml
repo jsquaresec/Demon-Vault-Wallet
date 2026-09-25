@@ -7,5 +7,6 @@ members = [
     "crates/vault-policy",
     "crates/vault-storage",
     "crates/vault-network",
+    "crates/vault-monero",
     "apps/desktop/src-tauri",
 ]
