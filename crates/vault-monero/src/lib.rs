@@ -54,7 +54,7 @@ pub struct NodeSelection {
     pub network: MoneroNetwork,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct WalletIdentity {
     network: MoneroNetwork,
     private_spend: PrivateKey,
