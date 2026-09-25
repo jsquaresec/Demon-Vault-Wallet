@@ -2,6 +2,7 @@
 #![forbid(unsafe_code)]
 
 use vault_core::{Assurance, SecurityCategory, VaultCore};
+use vault_monero::{MoneroNetwork, NodeMode};
 
 fn assurance(value: Assurance) -> &'static str {
     match value {
@@ -21,6 +22,22 @@ fn category(value: SecurityCategory) -> &'static str {
         SecurityCategory::Backup => "backup",
         SecurityCategory::TransactionProtection => "transaction",
     }
+}
+
+#[tauri::command]
+fn monero_status() -> String {
+    let core = VaultCore::default();
+    let network = match core.monero_network() {
+        MoneroNetwork::Mainnet => "mainnet",
+        MoneroNetwork::Stagenet => "stagenet",
+        MoneroNetwork::Testnet => "testnet",
+    };
+    let mode = match core.monero_node_mode() {
+        NodeMode::AutomaticRemote => "automatic-remote",
+        NodeMode::CustomRemote(_) => "custom-remote",
+        NodeMode::LocalNode(_) => "local-node",
+    };
+    format!("network={network};mode={mode};keys=local-only;remote-trust=untrusted;privacy=remote-node-may-observe-network-metadata")
 }
 
 #[tauri::command]
@@ -44,7 +61,7 @@ fn security_status() -> String {
 
 fn main() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![security_status])
+        .invoke_handler(tauri::generate_handler![security_status, monero_status])
         .run(tauri::generate_context!())
         .expect("failed to run Demon Vault desktop application");
 }

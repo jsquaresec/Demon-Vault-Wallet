@@ -2,6 +2,7 @@
 
 use std::{error::Error, fmt, path::Path};
 use vault_crypto::{KdfParams, SecretBytes, VaultDomain, VaultError, open, seal};
+use vault_monero::{MoneroNetwork, NodeMode};
 use vault_network::NetworkPolicy;
 use vault_policy::{Asset, CoreAction, CoreDecision, PolicyEngine};
 use vault_storage::{StorageError, read_envelope, write_new_envelope_atomic};
@@ -70,6 +71,8 @@ pub struct VaultCore {
     lock_state: VaultLockState,
     policy: PolicyEngine,
     network_policy: NetworkPolicy,
+    monero_network: MoneroNetwork,
+    monero_node_mode: NodeMode,
     unlocked_wallet_secret: Option<SecretBytes>,
 }
 
@@ -79,6 +82,8 @@ impl Default for VaultCore {
             lock_state: VaultLockState::Locked,
             policy: PolicyEngine,
             network_policy: NetworkPolicy::default(),
+            monero_network: MoneroNetwork::Mainnet,
+            monero_node_mode: NodeMode::default(),
             unlocked_wallet_secret: None,
         }
     }
@@ -91,6 +96,14 @@ impl VaultCore {
             network_policy: self.network_policy,
             supported_assets: [Asset::Bitcoin, Asset::Monero, Asset::Zcash],
         }
+    }
+
+    pub fn monero_network(&self) -> MoneroNetwork {
+        self.monero_network
+    }
+
+    pub fn monero_node_mode(&self) -> &NodeMode {
+        &self.monero_node_mode
     }
 
     pub fn security_report(&self) -> SecurityReport {
@@ -144,6 +157,12 @@ impl VaultCore {
                     control: "Application telemetry",
                     assurance: Assurance::Configured,
                     detail: "No analytics or usage telemetry subsystem is configured",
+                },
+                SecurityFinding {
+                    category: SecurityCategory::Privacy,
+                    control: "Monero remote-node trust",
+                    assurance: Assurance::Configured,
+                    detail: "Remote Monero nodes are untrusted and receive no wallet private keys",
                 },
                 SecurityFinding {
                     category: SecurityCategory::Application,
@@ -329,6 +348,14 @@ mod tests {
         );
         assert_eq!(report.verified_count(), 2);
         assert!(report.unknown_count() >= 1);
+    }
+
+    #[test]
+    fn monero_defaults_to_automatic_remote_without_changing_network_posture() {
+        let core = VaultCore::default();
+        assert_eq!(core.monero_network(), MoneroNetwork::Mainnet);
+        assert_eq!(core.monero_node_mode(), &NodeMode::AutomaticRemote);
+        assert!(core.status().network_policy.outbound_only());
     }
 
     #[test]
