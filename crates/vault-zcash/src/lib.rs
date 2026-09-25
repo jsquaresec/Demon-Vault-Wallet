@@ -742,8 +742,7 @@ mod tests {
 
     #[test]
     fn signing_requires_exact_authorization_before_broadcast() {
-        let mut wallet =
-            ZcashWallet::new(ZcashNetwork::Testnet, PrivacyPolicy::ShieldedRequired);
+        let mut wallet = ZcashWallet::new(ZcashNetwork::Testnet, PrivacyPolicy::ShieldedRequired);
         let backend = MockBackend {
             network: ZcashNetwork::Testnet,
             healthy: true,
