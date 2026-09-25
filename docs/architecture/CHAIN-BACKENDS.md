@@ -16,7 +16,15 @@ Signing remains disabled at the policy boundary until transaction authorization 
 
 ## Monero
 
-Connection modes are automatic remote node (default), custom remote node, and user-managed local node. Remote nodes are untrusted and the UI must explain network-metadata tradeoffs.
+Monero supports three node-selection modes: automatic remote node by default, a user-supplied custom remote node, and a user-managed local node. Automatic selection filters for the configured Monero network and selects only healthy candidates. Local-node mode only accepts loopback endpoints.
+
+Remote nodes are untrusted. The backend boundary never receives the wallet seed, private spend key, private view key, vault password, or signing authority. Chain transactions are fetched through the narrow backend interface and ownership scanning is performed locally using the private view key and public spend key.
+
+Wallet identity creation is deterministic from vault-protected seed material and uses separate domain-separated spend and view derivation. Address parsing validates Mainnet, Stagenet, and Testnet identity explicitly.
+
+Synchronization state rejects malformed heights, duplicate outputs, arithmetic overflow, malformed transaction data, undecodable confidential amounts, and unexpectedly deep reorganization reports. Fee estimates are bounded before they can become part of a transaction intent.
+
+Transaction intents bind network, destination, amount, and fee into an exact authorization digest. A signed Monero transaction must match that authorization before broadcast. The signing interface is local-only; remote nodes cannot request arbitrary signatures or access wallet secrets.
 
 ## Zcash
 

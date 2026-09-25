@@ -51,3 +51,36 @@ async function loadSecurity() {
   }
 }
 loadSecurity();
+
+
+async function loadMonero() {
+  const nodeStatus = document.getElementById("moneroNodeStatus");
+  const details = document.getElementById("moneroDetails");
+  try {
+    if (!window.__TAURI__?.core?.invoke) return;
+    const raw = await window.__TAURI__.core.invoke("monero_status");
+    const values = Object.fromEntries(raw.split(";").map((part) => part.split("=")));
+    nodeStatus.textContent = `${values.mode} · ${values.network}`;
+    details.replaceChildren();
+    [
+      ["Network", values.network],
+      ["Node mode", values.mode],
+      ["Wallet keys", values.keys],
+      ["Remote trust", values["remote-trust"]],
+    ].forEach(([label, value]) => {
+      const row = document.createElement("div");
+      row.className = "check-row";
+      const left = document.createElement("span");
+      left.textContent = label;
+      const right = document.createElement("strong");
+      right.className = value === "local-only" ? "good" : "pending";
+      right.textContent = value;
+      row.append(left, right);
+      details.append(row);
+    });
+  } catch {
+    nodeStatus.textContent = "Monero state unavailable";
+    details.textContent = "Unable to read Monero configuration from the Rust core.";
+  }
+}
+loadMonero();
