@@ -119,3 +119,34 @@ async function loadZcash() {
   }
 }
 loadZcash();
+
+
+async function loadSwapDesk() {
+  const details = document.getElementById("swapdeskDetails");
+  try {
+    if (!window.__TAURI__?.core?.invoke || !details) return;
+    const raw = await window.__TAURI__.core.invoke("swapdesk_status");
+    const values = Object.fromEntries(raw.split(";").map((part) => part.split("=")));
+    details.replaceChildren();
+    [
+      ["Provider boundary", values["provider-boundary"]],
+      ["Webhook transport", values["webhook-transport"]],
+      ["Webhook configured", values["webhook-configured"]],
+      ["Anonymous schema", values["anonymous-schema"]],
+      ["Notification fields", values["notification-fields"]],
+    ].forEach(([label, value]) => {
+      const row = document.createElement("div");
+      row.className = "check-row";
+      const left = document.createElement("span");
+      left.textContent = label;
+      const right = document.createElement("strong");
+      right.className = value === "true" ? "good" : "pending";
+      right.textContent = value;
+      row.append(left, right);
+      details.append(row);
+    });
+  } catch {
+    details.textContent = "Unable to read SwapDesk security state from the Rust core.";
+  }
+}
+loadSwapDesk();
