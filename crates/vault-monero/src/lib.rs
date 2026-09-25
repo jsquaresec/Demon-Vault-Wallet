@@ -177,7 +177,8 @@ impl MoneroWalletKeys {
     }
 
     pub fn from_keys(spend_key: [u8; 32], view_key: [u8; 32]) -> Result<Self, MoneroError> {
-        let spend = PrivateKey::from_slice(&spend_key).map_err(|_| MoneroError::InvalidPrivateKey)?;
+        let spend =
+            PrivateKey::from_slice(&spend_key).map_err(|_| MoneroError::InvalidPrivateKey)?;
         let view = PrivateKey::from_slice(&view_key).map_err(|_| MoneroError::InvalidPrivateKey)?;
         if spend.as_bytes().iter().all(|byte| *byte == 0)
             || view.as_bytes().iter().all(|byte| *byte == 0)
