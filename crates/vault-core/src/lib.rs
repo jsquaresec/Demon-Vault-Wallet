@@ -375,7 +375,11 @@ mod tests {
         );
         assert!(!status.mainnet_enabled);
         assert!(!status.transaction_signing_enabled);
-        assert!(status.remote_node_privacy_notice.contains("network metadata"));
+        assert!(
+            status
+                .remote_node_privacy_notice
+                .contains("network metadata")
+        );
     }
 
     #[test]

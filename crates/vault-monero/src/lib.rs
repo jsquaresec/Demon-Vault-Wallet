@@ -48,11 +48,19 @@ pub struct NodeEndpoint {
 }
 
 impl NodeEndpoint {
-    pub fn automatic_remote(host: impl Into<String>, port: u16, tls: bool) -> Result<Self, MoneroError> {
+    pub fn automatic_remote(
+        host: impl Into<String>,
+        port: u16,
+        tls: bool,
+    ) -> Result<Self, MoneroError> {
         Self::new(NodeMode::AutomaticRemote, host, port, tls)
     }
 
-    pub fn custom_remote(host: impl Into<String>, port: u16, tls: bool) -> Result<Self, MoneroError> {
+    pub fn custom_remote(
+        host: impl Into<String>,
+        port: u16,
+        tls: bool,
+    ) -> Result<Self, MoneroError> {
         Self::new(NodeMode::CustomRemote, host, port, tls)
     }
 
@@ -155,7 +163,8 @@ impl MoneroWalletKeys {
     }
 
     pub fn from_spend_key(spend_key: [u8; 32]) -> Result<Self, MoneroError> {
-        let spend = PrivateKey::from_slice(&spend_key).map_err(|_| MoneroError::InvalidPrivateKey)?;
+        let spend =
+            PrivateKey::from_slice(&spend_key).map_err(|_| MoneroError::InvalidPrivateKey)?;
         if spend.as_bytes().iter().all(|byte| *byte == 0) {
             return Err(MoneroError::InvalidPrivateKey);
         }
@@ -400,8 +409,18 @@ mod tests {
         let stage = keys.primary_address(MoneroNetwork::Stagenet).unwrap();
         let test = keys.primary_address(MoneroNetwork::Testnet).unwrap();
 
-        assert_eq!(parse_address(&stage, MoneroNetwork::Stagenet).unwrap().network, Network::Stagenet);
-        assert_eq!(parse_address(&test, MoneroNetwork::Testnet).unwrap().network, Network::Testnet);
+        assert_eq!(
+            parse_address(&stage, MoneroNetwork::Stagenet)
+                .unwrap()
+                .network,
+            Network::Stagenet
+        );
+        assert_eq!(
+            parse_address(&test, MoneroNetwork::Testnet)
+                .unwrap()
+                .network,
+            Network::Testnet
+        );
         assert_ne!(stage, test);
     }
 
@@ -467,8 +486,7 @@ mod tests {
             },
         ];
 
-        let selected =
-            select_automatic_node(MoneroNetwork::Stagenet, 1_001, &candidates).unwrap();
+        let selected = select_automatic_node(MoneroNetwork::Stagenet, 1_001, &candidates).unwrap();
         assert_eq!(selected.host, "fast.example");
     }
 
@@ -491,8 +509,7 @@ mod tests {
             },
         ];
 
-        let selected =
-            select_automatic_node(MoneroNetwork::Stagenet, 2_000, &candidates).unwrap();
+        let selected = select_automatic_node(MoneroNetwork::Stagenet, 2_000, &candidates).unwrap();
         assert_eq!(selected.host, "tls.example");
     }
 
