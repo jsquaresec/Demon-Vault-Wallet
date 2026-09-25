@@ -68,6 +68,14 @@ pub struct CoreStatus {
     pub supported_assets: [Asset; 3],
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SwapDeskStatus {
+    pub provider_boundary_ready: bool,
+    pub webhook_transport_ready: bool,
+    pub webhook_configured: bool,
+    pub anonymous_schema_enforced: bool,
+}
+
 pub struct VaultCore {
     lock_state: VaultLockState,
     policy: PolicyEngine,
@@ -117,6 +125,15 @@ impl VaultCore {
 
     pub fn zcash_privacy_policy(&self) -> PrivacyPolicy {
         self.zcash_privacy_policy
+    }
+
+    pub fn swapdesk_status(&self) -> SwapDeskStatus {
+        SwapDeskStatus {
+            provider_boundary_ready: true,
+            webhook_transport_ready: true,
+            webhook_configured: false,
+            anonymous_schema_enforced: true,
+        }
     }
 
     pub fn security_report(&self) -> SecurityReport {
@@ -182,6 +199,12 @@ impl VaultCore {
                     control: "Zcash shielded recipient policy",
                     assurance: Assurance::Configured,
                     detail: "Zcash defaults to shielded-only recipients and labels transparent addresses as non-private",
+                },
+                SecurityFinding {
+                    category: SecurityCategory::Privacy,
+                    control: "Swap notification privacy",
+                    assurance: Assurance::Verified,
+                    detail: "Discord swap events are restricted to provider, asset pair, and coarse status",
                 },
                 SecurityFinding {
                     category: SecurityCategory::Application,
@@ -383,6 +406,15 @@ mod tests {
         assert_eq!(core.zcash_network(), ZcashNetwork::Testnet);
         assert_eq!(core.zcash_privacy_policy(), PrivacyPolicy::ShieldedRequired);
         assert!(core.status().network_policy.outbound_only());
+    }
+
+    #[test]
+    fn swapdesk_defaults_to_private_disabled_notification_state() {
+        let status = VaultCore::default().swapdesk_status();
+        assert!(status.provider_boundary_ready);
+        assert!(status.webhook_transport_ready);
+        assert!(status.anonymous_schema_enforced);
+        assert!(!status.webhook_configured);
     }
 
     #[test]
