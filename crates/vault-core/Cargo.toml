@@ -7,6 +7,7 @@ publish = false
 [dependencies]
 vault-bitcoin = { path = "../vault-bitcoin" }
 vault-crypto = { path = "../vault-crypto" }
+vault-monero = { path = "../vault-monero" }
 vault-network = { path = "../vault-network" }
 vault-policy = { path = "../vault-policy" }
 vault-storage = { path = "../vault-storage" }

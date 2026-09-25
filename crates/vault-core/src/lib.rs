@@ -2,6 +2,7 @@
 
 use std::{error::Error, fmt, path::Path};
 use vault_crypto::{KdfParams, SecretBytes, VaultDomain, VaultError, open, seal};
+use vault_monero::{MoneroNetwork, NodeMode, remote_node_privacy_notice};
 use vault_network::NetworkPolicy;
 use vault_policy::{Asset, CoreAction, CoreDecision, PolicyEngine};
 use vault_storage::{StorageError, read_envelope, write_new_envelope_atomic};
@@ -60,6 +61,15 @@ impl SecurityReport {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MoneroSupportStatus {
+    pub default_network: MoneroNetwork,
+    pub node_modes: [NodeMode; 3],
+    pub mainnet_enabled: bool,
+    pub transaction_signing_enabled: bool,
+    pub remote_node_privacy_notice: &'static str,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CoreStatus {
     pub lock_state: VaultLockState,
     pub network_policy: NetworkPolicy,
@@ -90,6 +100,20 @@ impl VaultCore {
             lock_state: self.lock_state,
             network_policy: self.network_policy,
             supported_assets: [Asset::Bitcoin, Asset::Monero, Asset::Zcash],
+        }
+    }
+
+    pub fn monero_status(&self) -> MoneroSupportStatus {
+        MoneroSupportStatus {
+            default_network: MoneroNetwork::Stagenet,
+            node_modes: [
+                NodeMode::AutomaticRemote,
+                NodeMode::CustomRemote,
+                NodeMode::Local,
+            ],
+            mainnet_enabled: false,
+            transaction_signing_enabled: false,
+            remote_node_privacy_notice: remote_node_privacy_notice(),
         }
     }
 
@@ -132,6 +156,12 @@ impl VaultCore {
                     } else {
                         "Network policy permits an inbound capability"
                     },
+                },
+                SecurityFinding {
+                    category: SecurityCategory::Network,
+                    control: "Monero node modes",
+                    assurance: Assurance::Configured,
+                    detail: "Automatic remote, custom remote, and loopback local-node modes are available",
                 },
                 SecurityFinding {
                     category: SecurityCategory::Network,
@@ -329,6 +359,23 @@ mod tests {
         );
         assert_eq!(report.verified_count(), 2);
         assert!(report.unknown_count() >= 1);
+    }
+
+    #[test]
+    fn monero_support_is_non_mainnet_and_outbound_client_only() {
+        let status = VaultCore::default().monero_status();
+        assert_eq!(status.default_network, MoneroNetwork::Stagenet);
+        assert_eq!(
+            status.node_modes,
+            [
+                NodeMode::AutomaticRemote,
+                NodeMode::CustomRemote,
+                NodeMode::Local
+            ]
+        );
+        assert!(!status.mainnet_enabled);
+        assert!(!status.transaction_signing_enabled);
+        assert!(status.remote_node_privacy_notice.contains("network metadata"));
     }
 
     #[test]

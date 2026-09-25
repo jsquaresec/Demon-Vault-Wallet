@@ -1,6 +1,6 @@
 # Chain Backend Interfaces
 
-Each chain adapter exposes a narrow capability interface: synchronization/state queries, address/account state required by that chain, fee estimation, transaction construction support, broadcast of already authorized and signed transactions, and health/status reporting.
+Each chain adapter exposes a narrow capability interface: synchronization/state queries, address/account state required by that chain, fee estimation, transaction-construction support, broadcast of already authorized and signed transactions, and health/status reporting.
 
 ## Bitcoin
 
@@ -16,7 +16,27 @@ Signing remains disabled at the policy boundary until transaction authorization 
 
 ## Monero
 
-Connection modes are automatic remote node (default), custom remote node, and user-managed local node. Remote nodes are untrusted and the UI must explain network-metadata tradeoffs.
+Monero support is implemented in the dedicated `vault-monero` crate using maintained Monero protocol types.
+
+Supported development networks are Stagenet and Testnet. Mainnet is explicitly unavailable until the mainnet release stage.
+
+Connection modes are:
+
+- automatic remote node (default);
+- custom remote node;
+- user-managed local node bound to loopback.
+
+The automatic selector rejects unreachable nodes, wrong-network nodes, and nodes more than 20 blocks behind the best known height. Eligible nodes are ordered by TLS availability, chain height, and latency.
+
+Local-node mode accepts loopback hosts only and requires no firewall rule, router forwarding, UPnP, or NAT-PMP mapping.
+
+Wallet key material is generated locally from operating-system cryptographic randomness. The private view key is derived deterministically from the private spend key, and both are held in zeroizing byte containers. Address parsing validates checksums and network identity. Mainnet addresses fail closed.
+
+The adapter exposes wallet balance, synchronization, transaction-history, fee-estimation, transfer-intent, health, and broadcast interfaces without giving a remote node wallet secrets. Remote nodes receive no private spend key, private view key, vault password, or signing authority.
+
+A remote node may still observe network metadata associated with wallet synchronization, which is surfaced as a privacy warning.
+
+Transaction signing remains disabled at the global policy boundary until the transaction-authorization/signing stage is implemented.
 
 ## Zcash
 
