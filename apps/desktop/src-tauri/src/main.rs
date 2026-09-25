@@ -60,6 +60,18 @@ fn zcash_status() -> String {
 }
 
 #[tauri::command]
+fn swapdesk_status() -> String {
+    let status = VaultCore::default().swapdesk_status();
+    format!(
+        "provider-boundary={};webhook-transport={};webhook-configured={};anonymous-schema={};notification-fields=provider,pair,coarse-status",
+        status.provider_boundary_ready,
+        status.webhook_transport_ready,
+        status.webhook_configured,
+        status.anonymous_schema_enforced
+    )
+}
+
+#[tauri::command]
 fn security_status() -> String {
     VaultCore::default()
         .security_report()
@@ -83,7 +95,8 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             security_status,
             monero_status,
-            zcash_status
+            zcash_status,
+            swapdesk_status
         ])
         .run(tauri::generate_context!())
         .expect("failed to run Demon Vault desktop application");
