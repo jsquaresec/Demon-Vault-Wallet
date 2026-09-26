@@ -65,7 +65,7 @@ impl RequestLimits {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct MetadataPolicy {
     pub send_referer: bool,
     pub persist_cookies: bool,
@@ -73,16 +73,6 @@ pub struct MetadataPolicy {
     pub include_device_identifier: bool,
 }
 
-impl Default for MetadataPolicy {
-    fn default() -> Self {
-        Self {
-            send_referer: false,
-            persist_cookies: false,
-            cache_responses: false,
-            include_device_identifier: false,
-        }
-    }
-}
 
 impl MetadataPolicy {
     pub const fn minimized(self) -> bool {
