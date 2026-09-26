@@ -3,8 +3,8 @@ use crate::{
     WebhookTransport,
 };
 use std::{error::Error, fmt, path::Path, time::Duration};
-use vault_network::RequestLimits;
 use vault_crypto::{KdfParams, VaultDomain, VaultError, open, seal};
+use vault_network::RequestLimits;
 use vault_storage::{StorageError, read_envelope, write_new_envelope_atomic};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
