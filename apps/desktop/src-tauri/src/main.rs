@@ -3,6 +3,7 @@
 
 use vault_core::{Assurance, SecurityCategory, VaultCore};
 use vault_monero::{MoneroNetwork, NodeMode};
+use vault_network::PrivacyRoute;
 use vault_zcash::{PrivacyPolicy, ZcashNetwork};
 
 fn assurance(value: Assurance) -> &'static str {
@@ -84,6 +85,30 @@ fn external_signing_status() -> String {
 }
 
 #[tauri::command]
+fn network_privacy_status() -> String {
+    let core = VaultCore::default();
+    let privacy = core.network_privacy();
+    let route = match privacy.route {
+        PrivacyRoute::Direct => "direct",
+        PrivacyRoute::Proxy => "proxy",
+        PrivacyRoute::Tor => "tor",
+    };
+    format!(
+        "route={route};outbound-only={};tls-fail-closed={};redirects={};cookies={};referer={};cache={};device-id={};connect-timeout={}s;request-timeout={}s;max-response-bytes={}",
+        core.status().network_policy.outbound_only(),
+        privacy.tls_fail_closed(),
+        privacy.allow_redirects,
+        privacy.metadata.persist_cookies,
+        privacy.metadata.send_referer,
+        privacy.metadata.cache_responses,
+        privacy.metadata.include_device_identifier,
+        privacy.limits.connect_timeout_secs,
+        privacy.limits.request_timeout_secs,
+        privacy.limits.max_response_bytes
+    )
+}
+
+#[tauri::command]
 fn security_status() -> String {
     VaultCore::default()
         .security_report()
@@ -109,7 +134,8 @@ fn main() {
             monero_status,
             zcash_status,
             swapdesk_status,
-            external_signing_status
+            external_signing_status,
+            network_privacy_status
         ])
         .run(tauri::generate_context!())
         .expect("failed to run Demon Vault desktop application");
