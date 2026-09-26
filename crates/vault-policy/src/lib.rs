@@ -38,7 +38,9 @@ impl PolicyEngine {
                 if _vault_unlocked {
                     CoreDecision::Allowed
                 } else {
-                    CoreDecision::Denied("vault must be unlocked for protected transaction operations")
+                    CoreDecision::Denied(
+                        "vault must be unlocked for protected transaction operations",
+                    )
                 }
             }
             CoreAction::SignTransaction => CoreDecision::Denied("transaction signing is disabled"),
