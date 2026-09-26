@@ -8,6 +8,7 @@ The current codebase provides:
 - a Rust wallet-core boundary;
 - deny-by-default policy controls for unavailable sensitive operations;
 - outbound-only default network policy;
+- hardened outbound networking with HTTPS-only remote endpoints, fail-closed certificate policy, disabled redirects, bounded requests, metadata minimization, and explicit proxy/Tor routes;
 - a local encrypted vault using Argon2id, HKDF-SHA-256, and XChaCha20-Poly1305;
 - domain separation for wallet and integration secrets;
 - zeroizing secret containers;
@@ -20,9 +21,10 @@ The current codebase provides:
 - Zcash shielded wallet-state, local scanning, bounded fees, exact authorization, local-signing, and untrusted-backend boundaries;
 - SwapDesk provider isolation, quote/order validation, encrypted integration credentials, and best-effort sanitized Discord notifications;
 - hardware/offline signing request packages with exact authorization binding and no raw private-key export;
+- desktop bundle metadata with application icons for installed shortcuts/application entries;
 - Windows, macOS, and Linux CI.
 
-Bitcoin mainnet is disabled. Generic Bitcoin transaction signing remains disabled. Monero wallet and node primitives are implemented with a local-only signing boundary. Zcash defaults to testnet with shielded-only recipients; transparent addresses are explicitly labeled non-private. Live Zcash backend transport and production proof/signing implementations are not represented as verified until concrete local scanner/signer integrations are connected and tested. SwapDesk exposes a replaceable provider boundary rather than embedding a custodial exchange; an actual swap provider must be supplied through that boundary. External-signing interfaces and offline packages are implemented, but no specific hardware-wallet vendor adapter is represented as connected or verified until a concrete integration is added and tested.
+Bitcoin mainnet is disabled. Generic Bitcoin transaction signing remains disabled. Monero wallet and node primitives are implemented with a local-only signing boundary. Zcash defaults to testnet with shielded-only recipients; transparent addresses are explicitly labeled non-private. Live Zcash backend transport and production proof/signing implementations are not represented as verified until concrete local scanner/signer integrations are connected and tested. SwapDesk exposes a replaceable provider boundary rather than embedding a custodial exchange; an actual swap provider must be supplied through that boundary. External-signing interfaces and offline packages are implemented, but no specific hardware-wallet vendor adapter is represented as connected or verified until a concrete integration is added and tested. Remote network endpoints fail closed to HTTPS, while explicit loopback local-node HTTP remains available; direct, proxy, and Tor routing are represented without claiming direct connections are anonymous.
 
 ## Validation
 
