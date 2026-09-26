@@ -109,6 +109,18 @@ fn network_privacy_status() -> String {
 }
 
 #[tauri::command]
+fn transaction_security_status() -> String {
+    let status = VaultCore::default().transaction_security_status();
+    format!(
+        "pre-sign-review={};fee-limits={};exact-binding={};typed-confirmation={}",
+        status.pre_sign_review_ready,
+        status.fee_limits_ready,
+        status.exact_binding_ready,
+        status.typed_confirmation_required
+    )
+}
+
+#[tauri::command]
 fn security_status() -> String {
     VaultCore::default()
         .security_report()
@@ -135,7 +147,8 @@ fn main() {
             zcash_status,
             swapdesk_status,
             external_signing_status,
-            network_privacy_status
+            network_privacy_status,
+            transaction_security_status
         ])
         .run(tauri::generate_context!())
         .expect("failed to run Demon Vault desktop application");
