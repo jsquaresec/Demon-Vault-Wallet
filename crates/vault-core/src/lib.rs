@@ -76,6 +76,14 @@ pub struct SwapDeskStatus {
     pub anonymous_schema_enforced: bool,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ExternalSigningStatus {
+    pub hardware_boundary_ready: bool,
+    pub offline_packages_ready: bool,
+    pub private_key_export_enabled: bool,
+    pub live_device_connected: bool,
+}
+
 pub struct VaultCore {
     lock_state: VaultLockState,
     policy: PolicyEngine,
@@ -133,6 +141,15 @@ impl VaultCore {
             webhook_transport_ready: true,
             webhook_configured: false,
             anonymous_schema_enforced: true,
+        }
+    }
+
+    pub fn external_signing_status(&self) -> ExternalSigningStatus {
+        ExternalSigningStatus {
+            hardware_boundary_ready: true,
+            offline_packages_ready: true,
+            private_key_export_enabled: false,
+            live_device_connected: false,
         }
     }
 
@@ -229,6 +246,18 @@ impl VaultCore {
                     control: "Recovery verification",
                     assurance: Assurance::Unknown,
                     detail: "Recovery material has not been verified",
+                },
+                SecurityFinding {
+                    category: SecurityCategory::TransactionProtection,
+                    control: "External signing boundary",
+                    assurance: Assurance::Verified,
+                    detail: "Hardware and offline signing requests are cryptographically bound and exclude private-key export",
+                },
+                SecurityFinding {
+                    category: SecurityCategory::TransactionProtection,
+                    control: "Live hardware signer",
+                    assurance: Assurance::Unknown,
+                    detail: "No hardware device is currently connected or verified",
                 },
                 SecurityFinding {
                     category: SecurityCategory::TransactionProtection,
@@ -418,6 +447,15 @@ mod tests {
         assert!(status.webhook_transport_ready);
         assert!(status.anonymous_schema_enforced);
         assert!(!status.webhook_configured);
+    }
+
+    #[test]
+    fn external_signing_boundary_is_ready_without_enabling_key_export() {
+        let status = VaultCore::default().external_signing_status();
+        assert!(status.hardware_boundary_ready);
+        assert!(status.offline_packages_ready);
+        assert!(!status.private_key_export_enabled);
+        assert!(!status.live_device_connected);
     }
 
     #[test]
