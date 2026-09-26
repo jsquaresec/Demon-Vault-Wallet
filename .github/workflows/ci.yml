@@ -39,3 +39,36 @@ jobs:
 
       - name: Check
         run: cargo check --workspace
+
+
+  security-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Resolve dependency graph
+        run: cargo generate-lockfile
+
+      - name: Install RustSec auditor
+        run: cargo install cargo-audit --locked
+
+      - name: Audit dependency advisories
+        run: cargo audit
+
+      - name: Reject unexpected unsafe Rust
+        shell: bash
+        run: |
+          if grep -R --line-number --include='*.rs' -E 'unsafe[[:space:]]*\{|unsafe[[:space:]]+fn|unsafe[[:space:]]+impl|extern[[:space:]]+"C"' crates apps; then
+            echo "Unexpected unsafe Rust or FFI boundary found"
+            exit 1
+          fi
+
+      - name: Reject phase scaffolding
+        shell: bash
+        run: |
+          if find . -path './.git' -prune -o -type f -print | grep -Ei '/phase[-_ ]?[0-9]|phase[-_ ]?[0-9]'; then
+            echo "Phase-specific scaffolding must not ship"
+            exit 1
+          fi
