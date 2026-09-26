@@ -2,7 +2,8 @@ use crate::{
     AnonymousSwapEvent, DiscordWebhookCredential, SwapError, SwapOrder, SwapProvider, SwapQuote,
     WebhookTransport,
 };
-use std::{error::Error, fmt, path::Path};
+use std::{error::Error, fmt, path::Path, time::Duration};
+use vault_network::RequestLimits;
 use vault_crypto::{KdfParams, VaultDomain, VaultError, open, seal};
 use vault_storage::{StorageError, read_envelope, write_new_envelope_atomic};
 
@@ -27,9 +28,23 @@ pub fn notify_anonymous_swap_best_effort<T: WebhookTransport>(
     }
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 pub struct ReqwestWebhookTransport {
     client: reqwest::blocking::Client,
+}
+
+impl ReqwestWebhookTransport {
+    pub fn new() -> Result<Self, reqwest::Error> {
+        let limits = RequestLimits::default();
+        reqwest::blocking::Client::builder()
+            .https_only(true)
+            .redirect(reqwest::redirect::Policy::none())
+            .referer(false)
+            .connect_timeout(Duration::from_secs(limits.connect_timeout_secs))
+            .timeout(Duration::from_secs(limits.request_timeout_secs))
+            .build()
+            .map(|client| Self { client })
+    }
 }
 
 impl WebhookTransport for ReqwestWebhookTransport {
@@ -221,6 +236,11 @@ mod tests {
 
     fn pair() -> SwapPair {
         SwapPair::new(SwapAsset::Bitcoin, SwapAsset::Monero).unwrap()
+    }
+
+    #[test]
+    fn hardened_webhook_transport_builds_without_network_access() {
+        assert!(ReqwestWebhookTransport::new().is_ok());
     }
 
     #[test]
