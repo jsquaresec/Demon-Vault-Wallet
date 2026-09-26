@@ -542,8 +542,10 @@ mod tests {
             Err(CoreSigningError::PolicyDenied(_))
         ));
 
-        let mut core = VaultCore::default();
-        core.lock_state = VaultLockState::Unlocked;
+        let core = VaultCore {
+            lock_state: VaultLockState::Unlocked,
+            ..VaultCore::default()
+        };
         let request = core
             .prepare_external_signing(
                 SigningAsset::Bitcoin,
