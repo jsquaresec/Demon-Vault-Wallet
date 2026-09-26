@@ -24,6 +24,13 @@
     }
   },
   "bundle": {
-    "active": false
+    "active": true,
+    "targets": "all",
+    "shortDescription": "Cybersecurity-first self-custody desktop wallet",
+    "longDescription": "Demon Vault is a local-first self-custody desktop wallet for Bitcoin, Monero, and Zcash.",
+    "icon": [
+      "icons/icon.png",
+      "icons/icon.ico"
+    ]
   }
 }
