@@ -3,7 +3,7 @@
 use std::{error::Error, fmt, path::Path};
 use vault_crypto::{KdfParams, SecretBytes, VaultDomain, VaultError, open, seal};
 use vault_monero::{MoneroNetwork, NodeMode};
-use vault_network::NetworkPolicy;
+use vault_network::{NetworkPolicy, NetworkPrivacyConfig, PrivacyRoute};
 use vault_policy::{Asset, CoreAction, CoreDecision, PolicyEngine};
 use vault_signing::{SignedTransaction, SigningAsset, SigningError, SigningMode, SigningRequest};
 use vault_storage::{StorageError, read_envelope, write_new_envelope_atomic};
@@ -89,6 +89,7 @@ pub struct VaultCore {
     lock_state: VaultLockState,
     policy: PolicyEngine,
     network_policy: NetworkPolicy,
+    network_privacy: NetworkPrivacyConfig,
     monero_network: MoneroNetwork,
     monero_node_mode: NodeMode,
     zcash_network: ZcashNetwork,
@@ -102,6 +103,7 @@ impl Default for VaultCore {
             lock_state: VaultLockState::Locked,
             policy: PolicyEngine,
             network_policy: NetworkPolicy::default(),
+            network_privacy: NetworkPrivacyConfig::default(),
             monero_network: MoneroNetwork::Mainnet,
             monero_node_mode: NodeMode::default(),
             zcash_network: ZcashNetwork::Testnet,
@@ -118,6 +120,10 @@ impl VaultCore {
             network_policy: self.network_policy,
             supported_assets: [Asset::Bitcoin, Asset::Monero, Asset::Zcash],
         }
+    }
+
+    pub fn network_privacy(&self) -> &NetworkPrivacyConfig {
+        &self.network_privacy
     }
 
     pub fn monero_network(&self) -> MoneroNetwork {
@@ -192,6 +198,44 @@ impl VaultCore {
                         "Application policy requires no inbound listener or NAT mapping"
                     } else {
                         "Network policy permits an inbound capability"
+                    },
+                },
+                SecurityFinding {
+                    category: SecurityCategory::Network,
+                    control: "TLS fail-closed",
+                    assurance: if self.network_privacy.tls_fail_closed() {
+                        Assurance::Verified
+                    } else {
+                        Assurance::Detected
+                    },
+                    detail: if self.network_privacy.tls_fail_closed() {
+                        "Remote plaintext and invalid-certificate bypass are disabled"
+                    } else {
+                        "Network transport permits an unsafe certificate policy"
+                    },
+                },
+                SecurityFinding {
+                    category: SecurityCategory::Privacy,
+                    control: "Network metadata minimization",
+                    assurance: if self.network_privacy.privacy_hardened() {
+                        Assurance::Verified
+                    } else {
+                        Assurance::Detected
+                    },
+                    detail: if self.network_privacy.privacy_hardened() {
+                        "Referer, persistent cookies, response cache, device identifiers, and redirects are disabled"
+                    } else {
+                        "A network metadata-minimization control is disabled"
+                    },
+                },
+                SecurityFinding {
+                    category: SecurityCategory::Network,
+                    control: "Privacy route",
+                    assurance: Assurance::Configured,
+                    detail: match self.network_privacy.route {
+                        PrivacyRoute::Direct => "Direct outbound routing is configured",
+                        PrivacyRoute::Proxy => "Explicit proxy routing is configured",
+                        PrivacyRoute::Tor => "Tor routing is configured",
                     },
                 },
                 SecurityFinding {
@@ -491,6 +535,15 @@ mod tests {
         }));
         assert!(report.verified_count() >= 3);
         assert!(report.unknown_count() >= 1);
+    }
+
+    #[test]
+    fn network_privacy_defaults_are_hardened() {
+        let core = VaultCore::default();
+        assert_eq!(core.network_privacy().route, PrivacyRoute::Direct);
+        assert!(core.network_privacy().tls_fail_closed());
+        assert!(core.network_privacy().privacy_hardened());
+        assert!(core.network_privacy().validate().is_ok());
     }
 
     #[test]
