@@ -12,4 +12,5 @@ vault-monero = { path = "../vault-monero" }
 vault-policy = { path = "../vault-policy" }
 vault-storage = { path = "../vault-storage" }
 vault-swap = { path = "../vault-swap" }
+vault-signing = { path = "../vault-signing" }
 vault-zcash = { path = "../vault-zcash" }
