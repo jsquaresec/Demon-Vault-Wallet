@@ -50,3 +50,8 @@ The local vault uses pinned RustCrypto components:
 - zeroizing containers for decrypted secrets and derived key material.
 
 See `docs/architecture/VAULT.md`, `docs/security/VAULT-SECURITY.md`, and `docs/security/SECURITY-TESTING.md`.
+
+
+## Release security gate
+
+Release-level security checks are documented in `docs/security/RELEASE-AUDIT.md`. CI continuously runs cross-platform correctness checks, adversarial security tests, a RustSec dependency advisory scan, and an unexpected-unsafe-code gate. Production release approval still requires an independent security assessment and remediation of any critical/high findings; the project does not represent its internal review as an external audit.
