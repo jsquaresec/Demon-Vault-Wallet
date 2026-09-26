@@ -7,6 +7,11 @@ use vault_network::{NetworkPolicy, NetworkPrivacyConfig, PrivacyRoute};
 use vault_policy::{Asset, CoreAction, CoreDecision, PolicyEngine};
 use vault_signing::{SignedTransaction, SigningAsset, SigningError, SigningMode, SigningRequest};
 use vault_storage::{StorageError, read_envelope, write_new_envelope_atomic};
+use vault_transaction::{
+    FeePolicy, TransactionAuthorization, TransactionReview, TransactionReviewRequest,
+    TransactionSecurityError, TransactionAsset, authorize_review, bind_unsigned_transaction,
+    review_transaction,
+};
 use vault_zcash::{PrivacyPolicy, ZcashNetwork};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -85,6 +90,14 @@ pub struct ExternalSigningStatus {
     pub live_device_connected: bool,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TransactionSecurityStatus {
+    pub pre_sign_review_ready: bool,
+    pub fee_limits_ready: bool,
+    pub exact_binding_ready: bool,
+    pub typed_confirmation_required: bool,
+}
+
 pub struct VaultCore {
     lock_state: VaultLockState,
     policy: PolicyEngine,
@@ -157,6 +170,15 @@ impl VaultCore {
             offline_packages_ready: true,
             private_key_export_enabled: false,
             live_device_connected: false,
+        }
+    }
+
+    pub fn transaction_security_status(&self) -> TransactionSecurityStatus {
+        TransactionSecurityStatus {
+            pre_sign_review_ready: true,
+            fee_limits_ready: true,
+            exact_binding_ready: true,
+            typed_confirmation_required: true,
         }
     }
 
@@ -306,15 +328,21 @@ impl VaultCore {
                 },
                 SecurityFinding {
                     category: SecurityCategory::TransactionProtection,
-                    control: "Transaction signing",
-                    assurance: Assurance::Configured,
-                    detail: "Transaction signing is disabled by policy",
+                    control: "Transaction review",
+                    assurance: Assurance::Verified,
+                    detail: "Pre-sign review binds recipients, amounts, fees, network, transaction bytes, expiry, and explicit confirmation",
                 },
                 SecurityFinding {
                     category: SecurityCategory::TransactionProtection,
-                    control: "Transaction review",
-                    assurance: Assurance::Unknown,
-                    detail: "Pre-sign transaction review is not implemented",
+                    control: "Fee safety limits",
+                    assurance: Assurance::Verified,
+                    detail: "Absolute and relative fee limits can block authorization before signing",
+                },
+                SecurityFinding {
+                    category: SecurityCategory::TransactionProtection,
+                    control: "Transaction signing",
+                    assurance: Assurance::Configured,
+                    detail: "Generic unreviewed signing remains disabled; reviewed external signing is authorized through the transaction-security boundary",
                 },
             ],
         }
@@ -325,26 +353,65 @@ impl VaultCore {
             .evaluate(action, self.lock_state == VaultLockState::Unlocked)
     }
 
+    pub fn review_transaction(
+        &self,
+        request: TransactionReviewRequest,
+        fee_policy: FeePolicy,
+        now_unix: u64,
+    ) -> Result<TransactionReview, CoreTransactionError> {
+        match self.authorize(CoreAction::ReviewTransaction) {
+            CoreDecision::Allowed => {}
+            CoreDecision::Denied(reason) => return Err(CoreTransactionError::PolicyDenied(reason)),
+        }
+        review_transaction(request, fee_policy, now_unix).map_err(CoreTransactionError::Security)
+    }
+
+    pub fn authorize_transaction_review(
+        &self,
+        review: &TransactionReview,
+        typed_confirmation: &str,
+        now_unix: u64,
+    ) -> Result<TransactionAuthorization, CoreTransactionError> {
+        match self.authorize(CoreAction::AuthorizeReviewedTransaction) {
+            CoreDecision::Allowed => {}
+            CoreDecision::Denied(reason) => return Err(CoreTransactionError::PolicyDenied(reason)),
+        }
+        authorize_review(review, typed_confirmation, now_unix).map_err(CoreTransactionError::Security)
+    }
+
     pub fn prepare_external_signing(
         &self,
         asset: SigningAsset,
         mode: SigningMode,
         network: &str,
         unsigned_transaction: Vec<u8>,
-        authorization: [u8; 32],
-        expires_at_unix: u64,
+        authorization: &TransactionAuthorization,
+        now_unix: u64,
     ) -> Result<SigningRequest, CoreSigningError> {
         match self.authorize(CoreAction::PrepareExternalSigning) {
             CoreDecision::Allowed => {}
             CoreDecision::Denied(reason) => return Err(CoreSigningError::PolicyDenied(reason)),
         }
+
+        let review_asset = match asset {
+            SigningAsset::Bitcoin => TransactionAsset::Bitcoin,
+            SigningAsset::Monero => TransactionAsset::Monero,
+            SigningAsset::Zcash => TransactionAsset::Zcash,
+        };
+        let transaction_binding =
+            bind_unsigned_transaction(review_asset, network, &unsigned_transaction)
+                .map_err(CoreSigningError::TransactionSecurity)?;
+        authorization
+            .validate_for(transaction_binding, now_unix)
+            .map_err(CoreSigningError::TransactionSecurity)?;
+
         SigningRequest::new(
             asset,
             mode,
             network,
             unsigned_transaction,
-            authorization,
-            expires_at_unix,
+            authorization.value(),
+            authorization.expires_at_unix,
         )
         .map_err(CoreSigningError::Signing)
     }
@@ -417,6 +484,7 @@ impl VaultCore {
 pub enum CoreSigningError {
     PolicyDenied(&'static str),
     Signing(SigningError),
+    TransactionSecurity(TransactionSecurityError),
 }
 
 impl fmt::Display for CoreSigningError {
@@ -424,6 +492,9 @@ impl fmt::Display for CoreSigningError {
         match self {
             Self::PolicyDenied(reason) => write!(formatter, "external signing denied: {reason}"),
             Self::Signing(error) => write!(formatter, "external signing error: {error}"),
+            Self::TransactionSecurity(error) => {
+                write!(formatter, "transaction security error: {error}")
+            }
         }
     }
 }
@@ -432,6 +503,31 @@ impl Error for CoreSigningError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             Self::Signing(error) => Some(error),
+            Self::TransactionSecurity(error) => Some(error),
+            Self::PolicyDenied(_) => None,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum CoreTransactionError {
+    PolicyDenied(&'static str),
+    Security(TransactionSecurityError),
+}
+
+impl fmt::Display for CoreTransactionError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::PolicyDenied(reason) => write!(formatter, "transaction review denied: {reason}"),
+            Self::Security(error) => write!(formatter, "transaction security error: {error}"),
+        }
+    }
+}
+
+impl Error for CoreTransactionError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            Self::Security(error) => Some(error),
             Self::PolicyDenied(_) => None,
         }
     }
@@ -572,6 +668,15 @@ mod tests {
     }
 
     #[test]
+    fn transaction_security_boundary_is_ready() {
+        let status = VaultCore::default().transaction_security_status();
+        assert!(status.pre_sign_review_ready);
+        assert!(status.fee_limits_ready);
+        assert!(status.exact_binding_ready);
+        assert!(status.typed_confirmation_required);
+    }
+
+    #[test]
     fn external_signing_boundary_is_ready_without_enabling_key_export() {
         let status = VaultCore::default().external_signing_status();
         assert!(status.hardware_boundary_ready);
@@ -581,32 +686,51 @@ mod tests {
     }
 
     #[test]
-    fn external_signing_requires_unlock_and_validates_offline_response() {
+    fn reviewed_transaction_authorization_is_required_for_external_signing() {
+        let unsigned = vec![1, 2, 3];
+        let binding =
+            bind_unsigned_transaction(TransactionAsset::Bitcoin, "testnet", &unsigned).unwrap();
+        let review_request = TransactionReviewRequest::new(
+            TransactionAsset::Bitcoin,
+            "testnet",
+            vec![vault_transaction::ReviewOutput::new(
+                vault_transaction::OutputKind::Recipient,
+                "tb1qrecipient",
+                100_000,
+            )
+            .unwrap()],
+            500,
+            binding,
+            None,
+            5_000,
+        )
+        .unwrap();
+
         let locked = VaultCore::default();
         assert!(matches!(
-            locked.prepare_external_signing(
-                SigningAsset::Bitcoin,
-                SigningMode::Offline,
-                "testnet",
-                vec![1, 2, 3],
-                [9u8; 32],
-                5_000,
-            ),
-            Err(CoreSigningError::PolicyDenied(_))
+            locked.review_transaction(review_request.clone(), FeePolicy::conservative_default(), 1),
+            Err(CoreTransactionError::PolicyDenied(_))
         ));
 
         let core = VaultCore {
             lock_state: VaultLockState::Unlocked,
             ..VaultCore::default()
         };
+        let review = core
+            .review_transaction(review_request, FeePolicy::conservative_default(), 1)
+            .unwrap();
+        let authorization = core
+            .authorize_transaction_review(&review, &review.confirmation_code(), 2)
+            .unwrap();
+
         let request = core
             .prepare_external_signing(
                 SigningAsset::Bitcoin,
                 SigningMode::Offline,
                 "testnet",
-                vec![1, 2, 3],
-                [9u8; 32],
-                5_000,
+                unsigned,
+                &authorization,
+                3,
             )
             .unwrap();
         let signed = SignedTransaction::new(request.binding(), vec![4, 5, 6]).unwrap();
