@@ -181,3 +181,47 @@ async function loadExternalSigning() {
   }
 }
 loadExternalSigning();
+
+
+async function loadNetworkPrivacy() {
+  const details = document.getElementById("networkPrivacyDetails");
+  try {
+    if (!window.__TAURI__?.core?.invoke || !details) return;
+    const raw = await window.__TAURI__.core.invoke("network_privacy_status");
+    const values = Object.fromEntries(raw.split(";").map((part) => part.split("=")));
+    details.replaceChildren();
+    [
+      ["Route", values.route],
+      ["Outbound only", values["outbound-only"]],
+      ["TLS fail closed", values["tls-fail-closed"]],
+      ["Redirects", values.redirects],
+      ["Persistent cookies", values.cookies],
+      ["Referer", values.referer],
+      ["Response cache", values.cache],
+      ["Device identifier", values["device-id"]],
+      ["Connect timeout", values["connect-timeout"]],
+      ["Request timeout", values["request-timeout"]],
+    ].forEach(([label, value]) => {
+      const row = document.createElement("div");
+      row.className = "check-row";
+      const left = document.createElement("span");
+      left.textContent = label;
+      const right = document.createElement("strong");
+      const protectedFalse = ["Redirects", "Persistent cookies", "Referer", "Response cache", "Device identifier"].includes(label);
+      right.className =
+        value === "true" && !protectedFalse
+          ? "good"
+          : value === "false" && protectedFalse
+            ? "good"
+            : label === "Route" && value === "direct"
+              ? "good"
+              : "pending";
+      right.textContent = value;
+      row.append(left, right);
+      details.append(row);
+    });
+  } catch {
+    details.textContent = "Unable to read network privacy state from the Rust core.";
+  }
+}
+loadNetworkPrivacy();
