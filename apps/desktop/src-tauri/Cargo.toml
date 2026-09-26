@@ -13,3 +13,4 @@ vault-core = { path = "../../../crates/vault-core" }
 vault-monero = { path = "../../../crates/vault-monero" }
 vault-zcash = { path = "../../../crates/vault-zcash" }
 vault-swap = { path = "../../../crates/vault-swap" }
+vault-network = { path = "../../../crates/vault-network" }
