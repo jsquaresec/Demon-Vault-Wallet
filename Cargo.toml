@@ -10,5 +10,6 @@ members = [
     "crates/vault-monero",
     "crates/vault-zcash",
     "crates/vault-swap",
+    "crates/vault-signing",
     "apps/desktop/src-tauri",
 ]
