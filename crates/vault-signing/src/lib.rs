@@ -243,9 +243,10 @@ pub fn export_offline_request(request: &SigningRequest) -> Result<Vec<u8>, Signi
     }
     let network_len =
         u16::try_from(request.network.len()).map_err(|_| SigningError::InvalidPackage)?;
-    let tx_len =
-        u32::try_from(request.unsigned_transaction.len()).map_err(|_| SigningError::InvalidPackage)?;
-    let mut output = Vec::with_capacity(64 + request.network.len() + request.unsigned_transaction.len());
+    let tx_len = u32::try_from(request.unsigned_transaction.len())
+        .map_err(|_| SigningError::InvalidPackage)?;
+    let mut output =
+        Vec::with_capacity(64 + request.network.len() + request.unsigned_transaction.len());
     output.extend_from_slice(MAGIC);
     output.extend_from_slice(&VERSION.to_le_bytes());
     output.push(request.asset as u8);
@@ -302,9 +303,7 @@ pub fn import_offline_request(bytes: &[u8]) -> Result<SigningRequest, SigningErr
     Ok(request)
 }
 
-pub fn export_offline_signature(
-    signed: &SignedTransaction,
-) -> Result<Vec<u8>, SigningError> {
+pub fn export_offline_signature(signed: &SignedTransaction) -> Result<Vec<u8>, SigningError> {
     let tx_len =
         u32::try_from(signed.signed_transaction.len()).map_err(|_| SigningError::InvalidPackage)?;
     let mut output = Vec::with_capacity(42 + signed.signed_transaction.len());
@@ -349,21 +348,18 @@ fn validate_network(network: &str) -> Result<(), SigningError> {
     Ok(())
 }
 
-fn take<'a>(
-    bytes: &'a [u8],
-    cursor: &mut usize,
-    len: usize,
-) -> Result<&'a [u8], SigningError> {
-    let end = cursor.checked_add(len).ok_or(SigningError::InvalidPackage)?;
-    let value = bytes.get(*cursor..end).ok_or(SigningError::InvalidPackage)?;
+fn take<'a>(bytes: &'a [u8], cursor: &mut usize, len: usize) -> Result<&'a [u8], SigningError> {
+    let end = cursor
+        .checked_add(len)
+        .ok_or(SigningError::InvalidPackage)?;
+    let value = bytes
+        .get(*cursor..end)
+        .ok_or(SigningError::InvalidPackage)?;
     *cursor = end;
     Ok(value)
 }
 
-fn take_array<const N: usize>(
-    bytes: &[u8],
-    cursor: &mut usize,
-) -> Result<[u8; N], SigningError> {
+fn take_array<const N: usize>(bytes: &[u8], cursor: &mut usize) -> Result<[u8; N], SigningError> {
     take(bytes, cursor, N)?
         .try_into()
         .map_err(|_| SigningError::InvalidPackage)
