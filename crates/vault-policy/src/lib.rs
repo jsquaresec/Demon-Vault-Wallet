@@ -10,6 +10,8 @@ pub enum Asset {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CoreAction {
     ViewStatus,
+    ReviewTransaction,
+    AuthorizeReviewedTransaction,
     PrepareExternalSigning,
     ImportExternalSignature,
     SignTransaction,
@@ -29,7 +31,10 @@ impl PolicyEngine {
     pub fn evaluate(&self, action: CoreAction, _vault_unlocked: bool) -> CoreDecision {
         match action {
             CoreAction::ViewStatus => CoreDecision::Allowed,
-            CoreAction::PrepareExternalSigning | CoreAction::ImportExternalSignature => {
+            CoreAction::ReviewTransaction
+            | CoreAction::AuthorizeReviewedTransaction
+            | CoreAction::PrepareExternalSigning
+            | CoreAction::ImportExternalSignature => {
                 if _vault_unlocked {
                     CoreDecision::Allowed
                 } else {
@@ -59,6 +64,23 @@ mod tests {
             engine.evaluate(CoreAction::ExportPrivateKey, true),
             CoreDecision::Denied(_)
         ));
+    }
+
+    #[test]
+    fn transaction_review_and_authorization_require_unlocked_vault() {
+        let engine = PolicyEngine;
+        assert_eq!(
+            engine.evaluate(CoreAction::ReviewTransaction, false),
+            CoreDecision::Denied("vault must be unlocked for external signing")
+        );
+        assert_eq!(
+            engine.evaluate(CoreAction::ReviewTransaction, true),
+            CoreDecision::Allowed
+        );
+        assert_eq!(
+            engine.evaluate(CoreAction::AuthorizeReviewedTransaction, true),
+            CoreDecision::Allowed
+        );
     }
 
     #[test]
