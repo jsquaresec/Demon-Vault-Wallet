@@ -221,7 +221,7 @@ impl TransactionReview {
         self.review_digest
     }
 
-    pub const fn has_blocking_findings(&self) -> bool {
+    pub fn has_blocking_findings(&self) -> bool {
         let mut index = 0;
         while index < self.findings.len() {
             if matches!(self.findings[index].severity, ReviewSeverity::Blocking) {
