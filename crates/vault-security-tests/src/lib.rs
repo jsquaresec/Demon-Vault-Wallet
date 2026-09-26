@@ -153,8 +153,7 @@ mod tests {
     #[test]
     fn transaction_review_mutations_change_binding_or_fail_review() {
         let tx = [1u8, 2, 3, 4];
-        let binding =
-            bind_unsigned_transaction(TransactionAsset::Bitcoin, "testnet", &tx).unwrap();
+        let binding = bind_unsigned_transaction(TransactionAsset::Bitcoin, "testnet", &tx).unwrap();
 
         let base = TransactionReviewRequest::new(
             TransactionAsset::Bitcoin,
@@ -180,16 +179,13 @@ mod tests {
         assert_ne!(original.digest(), changed_review.digest());
 
         let mutated_binding =
-            bind_unsigned_transaction(TransactionAsset::Bitcoin, "testnet", &[1, 2, 3, 5])
-                .unwrap();
+            bind_unsigned_transaction(TransactionAsset::Bitcoin, "testnet", &[1, 2, 3, 5]).unwrap();
         assert_ne!(binding, mutated_binding);
     }
 
     #[test]
     fn oversized_and_empty_unsigned_transactions_fail_closed() {
-        assert!(
-            bind_unsigned_transaction(TransactionAsset::Bitcoin, "testnet", &[]).is_err()
-        );
+        assert!(bind_unsigned_transaction(TransactionAsset::Bitcoin, "testnet", &[]).is_err());
         let oversized = vec![0u8; 1024 * 1024 + 1];
         assert!(
             bind_unsigned_transaction(TransactionAsset::Bitcoin, "testnet", &oversized).is_err()
