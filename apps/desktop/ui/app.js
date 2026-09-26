@@ -225,3 +225,33 @@ async function loadNetworkPrivacy() {
   }
 }
 loadNetworkPrivacy();
+
+
+async function loadTransactionSecurity() {
+  const details = document.getElementById("transactionSecurityDetails");
+  try {
+    if (!window.__TAURI__?.core?.invoke || !details) return;
+    const raw = await window.__TAURI__.core.invoke("transaction_security_status");
+    const values = Object.fromEntries(raw.split(";").map((part) => part.split("=")));
+    details.replaceChildren();
+    [
+      ["Pre-sign review", values["pre-sign-review"]],
+      ["Fee limits", values["fee-limits"]],
+      ["Exact transaction binding", values["exact-binding"]],
+      ["Typed confirmation", values["typed-confirmation"]],
+    ].forEach(([label, value]) => {
+      const row = document.createElement("div");
+      row.className = "check-row";
+      const left = document.createElement("span");
+      left.textContent = label;
+      const right = document.createElement("strong");
+      right.className = value === "true" ? "good" : "pending";
+      right.textContent = value;
+      row.append(left, right);
+      details.append(row);
+    });
+  } catch {
+    details.textContent = "Unable to read transaction security state from the Rust core.";
+  }
+}
+loadTransactionSecurity();
