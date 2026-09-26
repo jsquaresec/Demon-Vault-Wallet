@@ -38,7 +38,7 @@ impl PolicyEngine {
                 if _vault_unlocked {
                     CoreDecision::Allowed
                 } else {
-                    CoreDecision::Denied("vault must be unlocked for external signing")
+                    CoreDecision::Denied("vault must be unlocked for protected transaction operations")
                 }
             }
             CoreAction::SignTransaction => CoreDecision::Denied("transaction signing is disabled"),
@@ -71,7 +71,7 @@ mod tests {
         let engine = PolicyEngine;
         assert_eq!(
             engine.evaluate(CoreAction::ReviewTransaction, false),
-            CoreDecision::Denied("vault must be unlocked for external signing")
+            CoreDecision::Denied("vault must be unlocked for protected transaction operations")
         );
         assert_eq!(
             engine.evaluate(CoreAction::ReviewTransaction, true),
@@ -88,7 +88,7 @@ mod tests {
         let engine = PolicyEngine;
         assert_eq!(
             engine.evaluate(CoreAction::PrepareExternalSigning, false),
-            CoreDecision::Denied("vault must be unlocked for external signing")
+            CoreDecision::Denied("vault must be unlocked for protected transaction operations")
         );
         assert_eq!(
             engine.evaluate(CoreAction::PrepareExternalSigning, true),
