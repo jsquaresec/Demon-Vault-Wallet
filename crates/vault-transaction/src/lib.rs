@@ -277,6 +277,25 @@ impl TransactionAuthorization {
     }
 }
 
+pub fn bind_unsigned_transaction(
+    asset: TransactionAsset,
+    network: &str,
+    unsigned_transaction: &[u8],
+) -> Result<[u8; 32], TransactionSecurityError> {
+    validate_network(network)?;
+    if unsigned_transaction.is_empty() || unsigned_transaction.len() > 1024 * 1024 {
+        return Err(TransactionSecurityError::InvalidTransaction);
+    }
+    let mut hasher = Sha256::new();
+    hasher.update(b"demon-vault/unsigned-transaction/v1");
+    hasher.update([asset as u8]);
+    hasher.update((network.len() as u32).to_le_bytes());
+    hasher.update(network.as_bytes());
+    hasher.update((unsigned_transaction.len() as u64).to_le_bytes());
+    hasher.update(unsigned_transaction);
+    Ok(hasher.finalize().into())
+}
+
 pub fn review_transaction(
     request: TransactionReviewRequest,
     fee_policy: FeePolicy,
@@ -440,6 +459,7 @@ pub enum TransactionSecurityError {
     InvalidNetwork,
     InvalidAddress,
     InvalidAmount,
+    InvalidTransaction,
     InvalidOutputs,
     MissingRecipient,
     InvalidBinding,
@@ -461,6 +481,7 @@ impl fmt::Display for TransactionSecurityError {
             Self::InvalidNetwork => write!(formatter, "invalid transaction network"),
             Self::InvalidAddress => write!(formatter, "invalid transaction review address"),
             Self::InvalidAmount => write!(formatter, "invalid transaction amount"),
+            Self::InvalidTransaction => write!(formatter, "invalid unsigned transaction"),
             Self::InvalidOutputs => write!(formatter, "invalid transaction outputs"),
             Self::MissingRecipient => write!(formatter, "transaction has no recipient output"),
             Self::InvalidBinding => write!(formatter, "invalid transaction binding"),
@@ -498,6 +519,30 @@ mod tests {
             10_000,
         )
         .unwrap()
+    }
+
+    #[test]
+    fn unsigned_transaction_binding_changes_with_transaction_or_network() {
+        let first = bind_unsigned_transaction(
+            TransactionAsset::Bitcoin,
+            "testnet",
+            &[1, 2, 3],
+        )
+        .unwrap();
+        let second = bind_unsigned_transaction(
+            TransactionAsset::Bitcoin,
+            "testnet",
+            &[1, 2, 4],
+        )
+        .unwrap();
+        let other_network = bind_unsigned_transaction(
+            TransactionAsset::Bitcoin,
+            "regtest",
+            &[1, 2, 3],
+        )
+        .unwrap();
+        assert_ne!(first, second);
+        assert_ne!(first, other_network);
     }
 
     #[test]
