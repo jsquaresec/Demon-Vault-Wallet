@@ -141,12 +141,16 @@ mod tests {
 
     #[test]
     fn hardened_network_defaults_reject_unsafe_policy_mutations() {
-        let mut config = NetworkPrivacyConfig::default();
-        config.allow_redirects = true;
+        let config = NetworkPrivacyConfig {
+            allow_redirects: true,
+            ..NetworkPrivacyConfig::default()
+        };
         assert!(config.validate().is_err());
 
-        let mut config = NetworkPrivacyConfig::default();
-        config.accept_invalid_certificates = true;
+        let config = NetworkPrivacyConfig {
+            accept_invalid_certificates: true,
+            ..NetworkPrivacyConfig::default()
+        };
         assert!(config.validate().is_err());
     }
 
