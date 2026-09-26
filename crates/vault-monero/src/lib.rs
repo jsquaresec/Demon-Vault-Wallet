@@ -545,7 +545,11 @@ pub fn select_node(
     match mode {
         NodeMode::AutomaticRemote => candidates
             .iter()
-            .filter(|candidate| candidate.network == network && candidate.healthy)
+            .filter(|candidate| {
+                candidate.network == network
+                    && candidate.healthy
+                    && validate_remote_endpoint(&candidate.endpoint).is_ok()
+            })
             .max_by_key(|candidate| candidate.height)
             .map(|candidate| NodeSelection {
                 mode: NodeMode::AutomaticRemote,
@@ -656,24 +660,37 @@ fn validate_snapshot(snapshot: &SyncSnapshot) -> Result<(), MoneroError> {
 
 fn validate_remote_endpoint(endpoint: &str) -> Result<(), MoneroError> {
     let endpoint = endpoint.trim();
-    let valid_scheme = endpoint.starts_with("https://") || endpoint.starts_with("http://");
-    let has_host = endpoint
-        .split_once("://")
-        .map(|(_, rest)| !rest.is_empty() && !rest.starts_with('/'))
-        .unwrap_or(false);
-    let no_credentials = endpoint
-        .split_once("://")
-        .map(|(_, rest)| !rest.split('/').next().unwrap_or_default().contains('@'))
-        .unwrap_or(false);
-    if valid_scheme && has_host && no_credentials {
-        Ok(())
-    } else {
-        Err(MoneroError::InvalidNodeEndpoint)
+    if endpoint.is_empty()
+        || endpoint.len() > 2_048
+        || endpoint.chars().any(char::is_control)
+        || endpoint.contains('#')
+        || !endpoint.starts_with("https://")
+    {
+        return Err(MoneroError::InvalidNodeEndpoint);
     }
+
+    let authority = endpoint
+        .strip_prefix("https://")
+        .and_then(|rest| rest.split(['/', '?']).next())
+        .filter(|authority| !authority.is_empty() && !authority.contains('@'))
+        .ok_or(MoneroError::InvalidNodeEndpoint)?;
+    if authority.starts_with(':') {
+        return Err(MoneroError::InvalidNodeEndpoint);
+    }
+    Ok(())
 }
 
 fn validate_local_endpoint(endpoint: &str) -> Result<(), MoneroError> {
-    validate_remote_endpoint(endpoint)?;
+    let endpoint = endpoint.trim();
+    if endpoint.is_empty()
+        || endpoint.len() > 2_048
+        || endpoint.chars().any(char::is_control)
+        || endpoint.contains('#')
+        || endpoint.contains('@')
+    {
+        return Err(MoneroError::InvalidNodeEndpoint);
+    }
+
     let lower = endpoint.to_ascii_lowercase();
     if lower.starts_with("http://127.0.0.1")
         || lower.starts_with("http://localhost")
@@ -750,6 +767,44 @@ mod tests {
             .unwrap()
             .endpoint,
             "https://node-b.example"
+        );
+    }
+
+    #[test]
+    fn remote_nodes_require_https_and_automatic_selection_ignores_plaintext() {
+        assert_eq!(
+            select_node(
+                &NodeMode::CustomRemote("http://remote.example:18081".into()),
+                MoneroNetwork::Mainnet,
+                &[]
+            )
+            .unwrap_err(),
+            MoneroError::InvalidNodeEndpoint
+        );
+
+        let candidates = vec![
+            NodeCandidate {
+                endpoint: "http://faster.example".into(),
+                network: MoneroNetwork::Mainnet,
+                healthy: true,
+                height: 200,
+            },
+            NodeCandidate {
+                endpoint: "https://secure.example".into(),
+                network: MoneroNetwork::Mainnet,
+                healthy: true,
+                height: 150,
+            },
+        ];
+        assert_eq!(
+            select_node(
+                &NodeMode::AutomaticRemote,
+                MoneroNetwork::Mainnet,
+                &candidates
+            )
+            .unwrap()
+            .endpoint,
+            "https://secure.example"
         );
     }
 
