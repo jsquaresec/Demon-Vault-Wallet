@@ -66,7 +66,9 @@ impl FeePolicy {
         max_absolute_atomic: u64,
         max_fee_basis_points: u64,
     ) -> Result<Self, TransactionSecurityError> {
-        if max_absolute_atomic == 0 || max_fee_basis_points == 0 || max_fee_basis_points > MAX_FEE_BPS
+        if max_absolute_atomic == 0
+            || max_fee_basis_points == 0
+            || max_fee_basis_points > MAX_FEE_BPS
         {
             return Err(TransactionSecurityError::InvalidFeePolicy);
         }
@@ -109,7 +111,10 @@ impl TransactionReviewRequest {
         if outputs.is_empty() || outputs.len() > MAX_OUTPUTS {
             return Err(TransactionSecurityError::InvalidOutputs);
         }
-        if !outputs.iter().any(|output| output.kind == OutputKind::Recipient) {
+        if !outputs
+            .iter()
+            .any(|output| output.kind == OutputKind::Recipient)
+        {
             return Err(TransactionSecurityError::MissingRecipient);
         }
         if transaction_binding.iter().all(|byte| *byte == 0) {
@@ -119,9 +124,10 @@ impl TransactionReviewRequest {
             return Err(TransactionSecurityError::InvalidExpiry);
         }
         let memo = memo.map(str::to_owned);
-        if memo.as_ref().is_some_and(|value| {
-            value.len() > MAX_MEMO_LEN || value.chars().any(char::is_control)
-        }) {
+        if memo
+            .as_ref()
+            .is_some_and(|value| value.len() > MAX_MEMO_LEN || value.chars().any(char::is_control))
+        {
             return Err(TransactionSecurityError::InvalidMemo);
         }
         Ok(Self {
@@ -359,7 +365,8 @@ pub fn review_transaction(
 
     let review_digest = review_digest(&request, fee_basis_points)?;
     let mut approval_nonce = [0u8; 32];
-    getrandom::fill(&mut approval_nonce).map_err(|_| TransactionSecurityError::RandomnessUnavailable)?;
+    getrandom::fill(&mut approval_nonce)
+        .map_err(|_| TransactionSecurityError::RandomnessUnavailable)?;
 
     Ok(TransactionReview {
         request,
@@ -491,9 +498,15 @@ impl fmt::Display for TransactionSecurityError {
             Self::ArithmeticOverflow => write!(formatter, "transaction arithmetic overflow"),
             Self::ExpiredReview => write!(formatter, "transaction review has expired"),
             Self::BlockedByPolicy => write!(formatter, "transaction is blocked by safety policy"),
-            Self::ConfirmationMismatch => write!(formatter, "transaction confirmation does not match review"),
-            Self::ExpiredAuthorization => write!(formatter, "transaction authorization has expired"),
-            Self::AuthorizationMismatch => write!(formatter, "transaction authorization does not match"),
+            Self::ConfirmationMismatch => {
+                write!(formatter, "transaction confirmation does not match review")
+            }
+            Self::ExpiredAuthorization => {
+                write!(formatter, "transaction authorization has expired")
+            }
+            Self::AuthorizationMismatch => {
+                write!(formatter, "transaction authorization does not match")
+            }
             Self::RandomnessUnavailable => write!(formatter, "secure randomness unavailable"),
         }
     }
@@ -523,24 +536,12 @@ mod tests {
 
     #[test]
     fn unsigned_transaction_binding_changes_with_transaction_or_network() {
-        let first = bind_unsigned_transaction(
-            TransactionAsset::Bitcoin,
-            "testnet",
-            &[1, 2, 3],
-        )
-        .unwrap();
-        let second = bind_unsigned_transaction(
-            TransactionAsset::Bitcoin,
-            "testnet",
-            &[1, 2, 4],
-        )
-        .unwrap();
-        let other_network = bind_unsigned_transaction(
-            TransactionAsset::Bitcoin,
-            "regtest",
-            &[1, 2, 3],
-        )
-        .unwrap();
+        let first =
+            bind_unsigned_transaction(TransactionAsset::Bitcoin, "testnet", &[1, 2, 3]).unwrap();
+        let second =
+            bind_unsigned_transaction(TransactionAsset::Bitcoin, "testnet", &[1, 2, 4]).unwrap();
+        let other_network =
+            bind_unsigned_transaction(TransactionAsset::Bitcoin, "regtest", &[1, 2, 3]).unwrap();
         assert_ne!(first, second);
         assert_ne!(first, other_network);
     }
@@ -557,12 +558,8 @@ mod tests {
 
     #[test]
     fn excessive_fee_blocks_authorization() {
-        let review = review_transaction(
-            request(20_000),
-            FeePolicy::new(5_000, 1_000).unwrap(),
-            1,
-        )
-        .unwrap();
+        let review =
+            review_transaction(request(20_000), FeePolicy::new(5_000, 1_000).unwrap(), 1).unwrap();
         assert!(review.has_blocking_findings());
         assert_eq!(
             authorize_review(&review, &review.confirmation_code(), 2).unwrap_err(),
@@ -572,13 +569,13 @@ mod tests {
 
     #[test]
     fn approval_requires_exact_displayed_confirmation() {
-        let review = review_transaction(request(500), FeePolicy::conservative_default(), 1).unwrap();
+        let review =
+            review_transaction(request(500), FeePolicy::conservative_default(), 1).unwrap();
         assert_eq!(
             authorize_review(&review, "wrong", 2).unwrap_err(),
             TransactionSecurityError::ConfirmationMismatch
         );
-        let authorization =
-            authorize_review(&review, &review.confirmation_code(), 2).unwrap();
+        let authorization = authorize_review(&review, &review.confirmation_code(), 2).unwrap();
         assert!(authorization.validate_for([9u8; 32], 3).is_ok());
         assert_eq!(
             authorization.validate_for([8u8; 32], 3).unwrap_err(),
@@ -595,8 +592,7 @@ mod tests {
             TransactionSecurityError::ExpiredReview
         );
 
-        let authorization =
-            authorize_review(&review, &review.confirmation_code(), 9_999).unwrap();
+        let authorization = authorize_review(&review, &review.confirmation_code(), 9_999).unwrap();
         assert_eq!(
             authorization.validate_for([9u8; 32], 10_000).unwrap_err(),
             TransactionSecurityError::ExpiredAuthorization
