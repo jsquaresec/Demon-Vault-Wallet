@@ -601,7 +601,8 @@ mod tests {
 
     #[test]
     fn debug_output_does_not_expose_bindings_or_nonce() {
-        let review = review_transaction(request(500), FeePolicy::conservative_default(), 1).unwrap();
+        let review =
+            review_transaction(request(500), FeePolicy::conservative_default(), 1).unwrap();
         let debug = format!("{review:?}");
         assert!(debug.contains("redacted"));
         assert!(!debug.contains("[9, 9"));
