@@ -5,6 +5,7 @@ use vault_crypto::{KdfParams, SecretBytes, VaultDomain, VaultError, open, seal};
 use vault_monero::{MoneroNetwork, NodeMode};
 use vault_network::NetworkPolicy;
 use vault_policy::{Asset, CoreAction, CoreDecision, PolicyEngine};
+use vault_signing::{SigningAsset, SigningError, SigningMode, SigningRequest, SignedTransaction};
 use vault_storage::{StorageError, read_envelope, write_new_envelope_atomic};
 use vault_zcash::{PrivacyPolicy, ZcashNetwork};
 
@@ -280,6 +281,50 @@ impl VaultCore {
             .evaluate(action, self.lock_state == VaultLockState::Unlocked)
     }
 
+    pub fn prepare_external_signing(
+        &self,
+        asset: SigningAsset,
+        mode: SigningMode,
+        network: &str,
+        unsigned_transaction: Vec<u8>,
+        authorization: [u8; 32],
+        expires_at_unix: u64,
+    ) -> Result<SigningRequest, CoreSigningError> {
+        match self.authorize(CoreAction::PrepareExternalSigning) {
+            CoreDecision::Allowed => {}
+            CoreDecision::Denied(reason) => return Err(CoreSigningError::PolicyDenied(reason)),
+        }
+        SigningRequest::new(
+            asset,
+            mode,
+            network,
+            unsigned_transaction,
+            authorization,
+            expires_at_unix,
+        )
+        .map_err(CoreSigningError::Signing)
+    }
+
+    pub fn import_external_signature(
+        &self,
+        request: &SigningRequest,
+        package: &[u8],
+        now_unix: u64,
+    ) -> Result<SignedTransaction, CoreSigningError> {
+        match self.authorize(CoreAction::ImportExternalSignature) {
+            CoreDecision::Allowed => {}
+            CoreDecision::Denied(reason) => return Err(CoreSigningError::PolicyDenied(reason)),
+        }
+        request
+            .ensure_fresh(now_unix)
+            .map_err(CoreSigningError::Signing)?;
+        let signed =
+            vault_signing::import_offline_signature(package).map_err(CoreSigningError::Signing)?;
+        vault_signing::validate_signed_transaction(request, &signed)
+            .map_err(CoreSigningError::Signing)?;
+        Ok(signed)
+    }
+
     pub fn create_local_vault(
         &self,
         path: &Path,
@@ -321,6 +366,30 @@ impl VaultCore {
         self.unlocked_wallet_secret
             .as_ref()
             .map(SecretBytes::as_slice)
+    }
+}
+
+#[derive(Debug)]
+pub enum CoreSigningError {
+    PolicyDenied(&'static str),
+    Signing(SigningError),
+}
+
+impl fmt::Display for CoreSigningError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::PolicyDenied(reason) => write!(formatter, "external signing denied: {reason}"),
+            Self::Signing(error) => write!(formatter, "external signing error: {error}"),
+        }
+    }
+}
+
+impl Error for CoreSigningError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            Self::Signing(error) => Some(error),
+            Self::PolicyDenied(_) => None,
+        }
     }
 }
 
@@ -456,6 +525,42 @@ mod tests {
         assert!(status.offline_packages_ready);
         assert!(!status.private_key_export_enabled);
         assert!(!status.live_device_connected);
+    }
+
+    #[test]
+    fn external_signing_requires_unlock_and_validates_offline_response() {
+        let locked = VaultCore::default();
+        assert!(matches!(
+            locked.prepare_external_signing(
+                SigningAsset::Bitcoin,
+                SigningMode::Offline,
+                "testnet",
+                vec![1, 2, 3],
+                [9u8; 32],
+                5_000,
+            ),
+            Err(CoreSigningError::PolicyDenied(_))
+        ));
+
+        let mut core = VaultCore::default();
+        core.lock_state = VaultLockState::Unlocked;
+        let request = core
+            .prepare_external_signing(
+                SigningAsset::Bitcoin,
+                SigningMode::Offline,
+                "testnet",
+                vec![1, 2, 3],
+                [9u8; 32],
+                5_000,
+            )
+            .unwrap();
+        let signed = SignedTransaction::new(request.binding(), vec![4, 5, 6]).unwrap();
+        let package = vault_signing::export_offline_signature(&signed).unwrap();
+        assert_eq!(
+            core.import_external_signature(&request, &package, 4_000)
+                .unwrap(),
+            signed
+        );
     }
 
     #[test]
