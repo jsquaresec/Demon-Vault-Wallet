@@ -23,6 +23,7 @@ The current codebase provides:
 - hardware/offline signing request packages with exact authorization binding and no raw private-key export;
 - pre-sign transaction review with recipient/amount/fee/network binding, fee anomaly blocking, expiry, replay-resistant authorization, and typed confirmation;
 - desktop bundle metadata with application icons for installed shortcuts/application entries;
+- continuous property-based security testing for parsers, transaction bindings, network targets, and signing packages across the normal CI matrix;
 - Windows, macOS, and Linux CI.
 
 Bitcoin mainnet is disabled. Generic Bitcoin transaction signing remains disabled. Monero wallet and node primitives are implemented with a local-only signing boundary. Zcash defaults to testnet with shielded-only recipients; transparent addresses are explicitly labeled non-private. Live Zcash backend transport and production proof/signing implementations are not represented as verified until concrete local scanner/signer integrations are connected and tested. SwapDesk exposes a replaceable provider boundary rather than embedding a custodial exchange; an actual swap provider must be supplied through that boundary. External-signing interfaces and offline packages are implemented, but no specific hardware-wallet vendor adapter is represented as connected or verified until a concrete integration is added and tested. External signing now requires a transaction authorization produced by the protected pre-sign review flow; arbitrary authorization bytes are no longer accepted by the wallet core. Remote network endpoints fail closed to HTTPS, while explicit loopback local-node HTTP remains available; direct, proxy, and Tor routing are represented without claiming direct connections are anonymous.
@@ -48,4 +49,4 @@ The local vault uses pinned RustCrypto components:
 - operating-system cryptographic randomness;
 - zeroizing containers for decrypted secrets and derived key material.
 
-See `docs/architecture/VAULT.md` and `docs/security/VAULT-SECURITY.md`.
+See `docs/architecture/VAULT.md`, `docs/security/VAULT-SECURITY.md`, and `docs/security/SECURITY-TESTING.md`.
