@@ -5,7 +5,7 @@ use vault_crypto::{KdfParams, SecretBytes, VaultDomain, VaultError, open, seal};
 use vault_monero::{MoneroNetwork, NodeMode};
 use vault_network::NetworkPolicy;
 use vault_policy::{Asset, CoreAction, CoreDecision, PolicyEngine};
-use vault_signing::{SigningAsset, SigningError, SigningMode, SigningRequest, SignedTransaction};
+use vault_signing::{SignedTransaction, SigningAsset, SigningError, SigningMode, SigningRequest};
 use vault_storage::{StorageError, read_envelope, write_new_envelope_atomic};
 use vault_zcash::{PrivacyPolicy, ZcashNetwork};
 
