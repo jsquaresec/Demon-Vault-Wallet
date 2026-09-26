@@ -254,9 +254,7 @@ impl NetworkPrivacyConfig {
     }
 
     pub const fn privacy_hardened(&self) -> bool {
-        !self.allow_redirects
-            && !self.accept_invalid_certificates
-            && self.metadata.minimized()
+        !self.allow_redirects && !self.accept_invalid_certificates && self.metadata.minimized()
     }
 }
 
@@ -390,9 +388,7 @@ mod tests {
     #[test]
     fn https_remote_and_explicit_loopback_http_are_allowed() {
         let config = NetworkPrivacyConfig::default();
-        let remote = config
-            .validate_target("https://example.com/api")
-            .unwrap();
+        let remote = config.validate_target("https://example.com/api").unwrap();
         assert_eq!(remote.class(), EndpointClass::Remote);
 
         let local = config
@@ -413,9 +409,7 @@ mod tests {
 
         let tor = NetworkPrivacyConfig {
             route: PrivacyRoute::Tor,
-            proxy: Some(
-                ProxyEndpoint::new("socks5h://127.0.0.1:9050", PrivacyRoute::Tor).unwrap(),
-            ),
+            proxy: Some(ProxyEndpoint::new("socks5h://127.0.0.1:9050", PrivacyRoute::Tor).unwrap()),
             ..NetworkPrivacyConfig::default()
         };
         assert!(tor.validate().is_ok());
@@ -459,9 +453,7 @@ mod tests {
 
         let proxy = NetworkPrivacyConfig {
             route: PrivacyRoute::Proxy,
-            proxy: Some(
-                ProxyEndpoint::new("https://127.0.0.1:8443", PrivacyRoute::Proxy).unwrap(),
-            ),
+            proxy: Some(ProxyEndpoint::new("https://127.0.0.1:8443", PrivacyRoute::Proxy).unwrap()),
             ..NetworkPrivacyConfig::default()
         };
         assert!(proxy.validate().is_ok());
