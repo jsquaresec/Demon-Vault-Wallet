@@ -1,0 +1,16 @@
+[package]
+name = "vault-security-tests"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+proptest = "1"
+vault-bitcoin = { path = "../vault-bitcoin" }
+vault-crypto = { path = "../vault-crypto" }
+vault-monero = { path = "../vault-monero" }
+vault-network = { path = "../vault-network" }
+vault-signing = { path = "../vault-signing" }
+vault-swap = { path = "../vault-swap" }
+vault-transaction = { path = "../vault-transaction" }
+vault-zcash = { path = "../vault-zcash" }
