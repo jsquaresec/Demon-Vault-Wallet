@@ -72,6 +72,18 @@ fn swapdesk_status() -> String {
 }
 
 #[tauri::command]
+fn external_signing_status() -> String {
+    let status = VaultCore::default().external_signing_status();
+    format!(
+        "hardware-boundary={};offline-packages={};private-key-export={};live-device={}",
+        status.hardware_boundary_ready,
+        status.offline_packages_ready,
+        status.private_key_export_enabled,
+        status.live_device_connected
+    )
+}
+
+#[tauri::command]
 fn security_status() -> String {
     VaultCore::default()
         .security_report()
@@ -96,7 +108,8 @@ fn main() {
             security_status,
             monero_status,
             zcash_status,
-            swapdesk_status
+            swapdesk_status,
+            external_signing_status
         ])
         .run(tauri::generate_context!())
         .expect("failed to run Demon Vault desktop application");
