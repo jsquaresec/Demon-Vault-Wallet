@@ -150,3 +150,34 @@ async function loadSwapDesk() {
   }
 }
 loadSwapDesk();
+
+
+async function loadExternalSigning() {
+  const details = document.getElementById("externalSigningDetails");
+  try {
+    if (!window.__TAURI__?.core?.invoke || !details) return;
+    const raw = await window.__TAURI__.core.invoke("external_signing_status");
+    const values = Object.fromEntries(raw.split(";").map((part) => part.split("=")));
+    details.replaceChildren();
+    [
+      ["Hardware boundary", values["hardware-boundary"]],
+      ["Offline packages", values["offline-packages"]],
+      ["Private-key export", values["private-key-export"]],
+      ["Live device", values["live-device"]],
+    ].forEach(([label, value]) => {
+      const row = document.createElement("div");
+      row.className = "check-row";
+      const left = document.createElement("span");
+      left.textContent = label;
+      const right = document.createElement("strong");
+      right.className =
+        value === "true" && label !== "Live device" ? "good" : "pending";
+      right.textContent = value;
+      row.append(left, right);
+      details.append(row);
+    });
+  } catch {
+    details.textContent = "Unable to read external signing state from the Rust core.";
+  }
+}
+loadExternalSigning();
