@@ -4,7 +4,12 @@
 mod tests {
     use proptest::prelude::*;
     use std::panic::{AssertUnwindSafe, catch_unwind};
+    use vault_bitcoin::{BitcoinNetwork, parse_address as parse_bitcoin_address};
     use vault_crypto::VaultEnvelope;
+    use vault_monero::{
+        ChainTransaction, MoneroNetwork, WalletIdentity, parse_address as parse_monero_address,
+        scan_transactions_locally,
+    };
     use vault_network::{NetworkPrivacyConfig, OutboundTarget, PrivacyRoute, ProxyEndpoint};
     use vault_signing::{import_offline_request, import_offline_signature};
     use vault_swap::DiscordWebhookCredential;
@@ -12,6 +17,7 @@ mod tests {
         FeePolicy, OutputKind, ReviewOutput, TransactionAsset, TransactionReviewRequest,
         bind_unsigned_transaction, review_transaction,
     };
+    use vault_zcash::{ZcashNetwork, parse_recipient as parse_zcash_recipient};
 
     const MAX_FUZZ_BYTES: usize = 16 * 1024;
 
@@ -62,6 +68,34 @@ mod tests {
         fn arbitrary_webhook_credentials_never_panic(value in ".{0,4096}") {
             no_panic(|| {
                 let _ = DiscordWebhookCredential::new(&value);
+            });
+        }
+
+        #[test]
+        fn arbitrary_chain_addresses_never_panic(value in ".{0,512}") {
+            no_panic(|| {
+                let _ = parse_bitcoin_address(&value, BitcoinNetwork::Testnet);
+                let _ = parse_bitcoin_address(&value, BitcoinNetwork::Signet);
+                let _ = parse_bitcoin_address(&value, BitcoinNetwork::Regtest);
+                let _ = parse_monero_address(&value, MoneroNetwork::Mainnet);
+                let _ = parse_monero_address(&value, MoneroNetwork::Stagenet);
+                let _ = parse_monero_address(&value, MoneroNetwork::Testnet);
+                let _ = parse_zcash_recipient(&value, ZcashNetwork::Testnet);
+                let _ = parse_zcash_recipient(&value, ZcashNetwork::Regtest);
+            });
+        }
+
+        #[test]
+        fn arbitrary_monero_transaction_bytes_never_panic(bytes in prop::collection::vec(any::<u8>(), 0..MAX_FUZZ_BYTES)) {
+            let identity = WalletIdentity::from_seed(&[7u8; 32], MoneroNetwork::Stagenet).unwrap();
+            no_panic(|| {
+                let _ = scan_transactions_locally(
+                    &identity,
+                    &[ChainTransaction {
+                        height: 1,
+                        raw_transaction: bytes,
+                    }],
+                );
             });
         }
 
