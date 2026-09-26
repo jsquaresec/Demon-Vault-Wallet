@@ -8,9 +8,9 @@ use vault_policy::{Asset, CoreAction, CoreDecision, PolicyEngine};
 use vault_signing::{SignedTransaction, SigningAsset, SigningError, SigningMode, SigningRequest};
 use vault_storage::{StorageError, read_envelope, write_new_envelope_atomic};
 use vault_transaction::{
-    FeePolicy, TransactionAuthorization, TransactionReview, TransactionReviewRequest,
-    TransactionSecurityError, TransactionAsset, authorize_review, bind_unsigned_transaction,
-    review_transaction,
+    FeePolicy, TransactionAsset, TransactionAuthorization, TransactionReview,
+    TransactionReviewRequest, TransactionSecurityError, authorize_review,
+    bind_unsigned_transaction, review_transaction,
 };
 use vault_zcash::{PrivacyPolicy, ZcashNetwork};
 
@@ -376,7 +376,8 @@ impl VaultCore {
             CoreDecision::Allowed => {}
             CoreDecision::Denied(reason) => return Err(CoreTransactionError::PolicyDenied(reason)),
         }
-        authorize_review(review, typed_confirmation, now_unix).map_err(CoreTransactionError::Security)
+        authorize_review(review, typed_confirmation, now_unix)
+            .map_err(CoreTransactionError::Security)
     }
 
     pub fn prepare_external_signing(
@@ -693,12 +694,14 @@ mod tests {
         let review_request = TransactionReviewRequest::new(
             TransactionAsset::Bitcoin,
             "testnet",
-            vec![vault_transaction::ReviewOutput::new(
-                vault_transaction::OutputKind::Recipient,
-                "tb1qrecipient",
-                100_000,
-            )
-            .unwrap()],
+            vec![
+                vault_transaction::ReviewOutput::new(
+                    vault_transaction::OutputKind::Recipient,
+                    "tb1qrecipient",
+                    100_000,
+                )
+                .unwrap(),
+            ],
             500,
             binding,
             None,
