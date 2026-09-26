@@ -10,6 +10,8 @@ pub enum Asset {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CoreAction {
     ViewStatus,
+    PrepareExternalSigning,
+    ImportExternalSignature,
     SignTransaction,
     ExportPrivateKey,
 }
@@ -27,6 +29,13 @@ impl PolicyEngine {
     pub fn evaluate(&self, action: CoreAction, _vault_unlocked: bool) -> CoreDecision {
         match action {
             CoreAction::ViewStatus => CoreDecision::Allowed,
+            CoreAction::PrepareExternalSigning | CoreAction::ImportExternalSignature => {
+                if _vault_unlocked {
+                    CoreDecision::Allowed
+                } else {
+                    CoreDecision::Denied("vault must be unlocked for external signing")
+                }
+            }
             CoreAction::SignTransaction => CoreDecision::Denied("transaction signing is disabled"),
             CoreAction::ExportPrivateKey => {
                 CoreDecision::Denied("raw private-key export is disabled")
@@ -50,6 +59,23 @@ mod tests {
             engine.evaluate(CoreAction::ExportPrivateKey, true),
             CoreDecision::Denied(_)
         ));
+    }
+
+    #[test]
+    fn external_signing_requires_unlocked_vault() {
+        let engine = PolicyEngine;
+        assert_eq!(
+            engine.evaluate(CoreAction::PrepareExternalSigning, false),
+            CoreDecision::Denied("vault must be unlocked for external signing")
+        );
+        assert_eq!(
+            engine.evaluate(CoreAction::PrepareExternalSigning, true),
+            CoreDecision::Allowed
+        );
+        assert_eq!(
+            engine.evaluate(CoreAction::ImportExternalSignature, true),
+            CoreDecision::Allowed
+        );
     }
 
     #[test]
