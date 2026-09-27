@@ -688,21 +688,15 @@ mod tests {
                 .iter()
                 .any(|f| f.control == "Outbound-only policy" && f.assurance == Assurance::Verified)
         );
-        assert!(
-            report.findings.iter().any(|f| {
-                f.control == "Encrypted recovery backup" && f.assurance == Assurance::Verified
-            })
-        );
-        assert!(
-            report.findings.iter().any(|f| {
-                f.control == "Recovery restore boundary" && f.assurance == Assurance::Verified
-            })
-        );
-        assert!(
-            report.findings.iter().any(|f| {
-                f.control == "Release signature verifier" && f.assurance == Assurance::Verified
-            })
-        );
+        assert!(report.findings.iter().any(|f| {
+            f.control == "Encrypted recovery backup" && f.assurance == Assurance::Verified
+        }));
+        assert!(report.findings.iter().any(|f| {
+            f.control == "Recovery restore boundary" && f.assurance == Assurance::Verified
+        }));
+        assert!(report.findings.iter().any(|f| {
+            f.control == "Release signature verifier" && f.assurance == Assurance::Verified
+        }));
         assert!(report.findings.iter().any(|f| {
             f.control == "Swap notification privacy" && f.assurance == Assurance::Verified
         }));
