@@ -55,3 +55,10 @@ See `docs/architecture/VAULT.md`, `docs/security/VAULT-SECURITY.md`, and `docs/s
 ## Release security gate
 
 Release-level security checks are documented in `docs/security/RELEASE-AUDIT.md`. CI continuously runs cross-platform correctness checks, adversarial security tests, a RustSec dependency advisory scan, and an unexpected-unsafe-code gate. Production release approval still requires an independent security assessment and remediation of any critical/high findings; the project does not represent its internal review as an external audit.
+
+
+## Release candidate gate
+
+Demon Vault now has a fail-closed production release gate and signed-artifact verification boundary. The current repository is a **release candidate**, not a production-mainnet approval: independent security assessment, real-node compatibility, physical hardware signing, recovery/migration, installer-matrix, signed-artifact, and updater validation remain explicit blockers. See `docs/release/RELEASE-CANDIDATE.md`.
+
+Mainnet is not enabled merely because automated CI passes. The release layer requires explicit production evidence before a mainnet permit can be issued.
