@@ -481,7 +481,10 @@ pub enum MoneroError {
 impl fmt::Display for MoneroError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::MainnetDisabled => write!(formatter, "Monero mainnet is disabled until the production release gate is satisfied"),
+            Self::MainnetDisabled => write!(
+                formatter,
+                "Monero mainnet is disabled until the production release gate is satisfied"
+            ),
             Self::InvalidSeed => write!(formatter, "Monero seed material is invalid"),
             Self::InvalidPrivateKey => write!(formatter, "Monero private key is invalid"),
             Self::InvalidAddress => write!(formatter, "invalid Monero address"),
