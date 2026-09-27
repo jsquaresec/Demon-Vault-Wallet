@@ -109,6 +109,25 @@ fn network_privacy_status() -> String {
 }
 
 #[tauri::command]
+fn release_readiness_status() -> String {
+    let status = VaultCore::default().release_readiness_status();
+    format!(
+        "candidate={};mainnet={};internal-audit={};independent-audit={};real-nodes={};hardware={};recovery={};migration={};installers={};signed-release={};updater={}",
+        status.candidate_mode,
+        status.mainnet_enabled,
+        status.internal_security_audit,
+        status.independent_security_assessment,
+        status.real_node_compatibility,
+        status.hardware_signing_validation,
+        status.recovery_restore_validation,
+        status.migration_validation,
+        status.installer_matrix_validation,
+        status.signed_release_validation,
+        status.update_verification_validation
+    )
+}
+
+#[tauri::command]
 fn transaction_security_status() -> String {
     let status = VaultCore::default().transaction_security_status();
     format!(
@@ -148,7 +167,8 @@ fn main() {
             swapdesk_status,
             external_signing_status,
             network_privacy_status,
-            transaction_security_status
+            transaction_security_status,
+            release_readiness_status
         ])
         .run(tauri::generate_context!())
         .expect("failed to run Demon Vault desktop application");
