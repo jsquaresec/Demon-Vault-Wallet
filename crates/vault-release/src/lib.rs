@@ -230,17 +230,12 @@ mod tests {
         let signature = signing.sign(&manifest.canonical_bytes()).to_bytes();
 
         assert!(
-            verify_release_artifact(&manifest, artifact, &signature, verifying.as_bytes(), 7).is_ok()
+            verify_release_artifact(&manifest, artifact, &signature, verifying.as_bytes(), 7)
+                .is_ok()
         );
         assert_eq!(
-            verify_release_artifact(
-                &manifest,
-                b"tampered",
-                &signature,
-                verifying.as_bytes(),
-                7
-            )
-            .unwrap_err(),
+            verify_release_artifact(&manifest, b"tampered", &signature, verifying.as_bytes(), 7)
+                .unwrap_err(),
             ReleaseError::ArtifactHashMismatch
         );
     }
@@ -261,27 +256,15 @@ mod tests {
         let signature = signing.sign(&manifest.canonical_bytes()).to_bytes();
 
         assert_eq!(
-            verify_release_artifact(
-                &manifest,
-                artifact,
-                &signature,
-                verifying.as_bytes(),
-                3
-            )
-            .unwrap_err(),
+            verify_release_artifact(&manifest, artifact, &signature, verifying.as_bytes(), 3)
+                .unwrap_err(),
             ReleaseError::RollbackRejected
         );
 
         manifest.version = "0.1.0-rc.3".into();
         assert_eq!(
-            verify_release_artifact(
-                &manifest,
-                artifact,
-                &signature,
-                verifying.as_bytes(),
-                1
-            )
-            .unwrap_err(),
+            verify_release_artifact(&manifest, artifact, &signature, verifying.as_bytes(), 1)
+                .unwrap_err(),
             ReleaseError::InvalidSignature
         );
     }
