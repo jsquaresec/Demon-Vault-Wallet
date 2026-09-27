@@ -70,6 +70,7 @@ impl fmt::Debug for WalletIdentity {
 
 impl WalletIdentity {
     pub fn from_seed(seed: &[u8], network: MoneroNetwork) -> Result<Self, MoneroError> {
+        ensure_network_allowed(network)?;
         if seed.len() < 32 {
             return Err(MoneroError::InvalidSeed);
         }
@@ -84,6 +85,7 @@ impl WalletIdentity {
         private_view: PrivateKey,
         network: MoneroNetwork,
     ) -> Result<Self, MoneroError> {
+        ensure_network_allowed(network)?;
         if private_spend.as_bytes().iter().all(|byte| *byte == 0)
             || private_view.as_bytes().iter().all(|byte| *byte == 0)
         {
@@ -452,6 +454,7 @@ impl MoneroWallet {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MoneroError {
+    MainnetDisabled,
     InvalidSeed,
     InvalidPrivateKey,
     InvalidAddress,
@@ -478,6 +481,7 @@ pub enum MoneroError {
 impl fmt::Display for MoneroError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::MainnetDisabled => write!(formatter, "Monero mainnet is disabled until the production release gate is satisfied"),
             Self::InvalidSeed => write!(formatter, "Monero seed material is invalid"),
             Self::InvalidPrivateKey => write!(formatter, "Monero private key is invalid"),
             Self::InvalidAddress => write!(formatter, "invalid Monero address"),
@@ -530,7 +534,11 @@ impl fmt::Display for MoneroError {
 impl Error for MoneroError {}
 
 pub fn parse_address(value: &str, network: MoneroNetwork) -> Result<Address, MoneroError> {
+    ensure_network_allowed(network)?;
     let address = Address::from_str(value).map_err(|_| MoneroError::InvalidAddress)?;
+    if address.network == Network::Mainnet {
+        return Err(MoneroError::MainnetDisabled);
+    }
     if address.network != network.network() {
         return Err(MoneroError::WrongNetwork);
     }
@@ -542,6 +550,7 @@ pub fn select_node(
     network: MoneroNetwork,
     candidates: &[NodeCandidate],
 ) -> Result<NodeSelection, MoneroError> {
+    ensure_network_allowed(network)?;
     match mode {
         NodeMode::AutomaticRemote => candidates
             .iter()
@@ -612,6 +621,8 @@ pub fn validate_backend_network(
     expected: MoneroNetwork,
     reported: MoneroNetwork,
 ) -> Result<(), MoneroError> {
+    ensure_network_allowed(expected)?;
+    ensure_network_allowed(reported)?;
     if expected != reported {
         return Err(MoneroError::BackendNetworkMismatch);
     }
@@ -628,6 +639,13 @@ pub fn validate_authorized_signed_transaction(
     }
     if signed.raw_transaction.is_empty() {
         return Err(MoneroError::EmptySignedTransaction);
+    }
+    Ok(())
+}
+
+fn ensure_network_allowed(network: MoneroNetwork) -> Result<(), MoneroError> {
+    if network == MoneroNetwork::Mainnet {
+        return Err(MoneroError::MainnetDisabled);
     }
     Ok(())
 }
@@ -728,8 +746,24 @@ mod tests {
     }
 
     #[test]
+    fn mainnet_wallet_identity_is_release_gated() {
+        assert_eq!(
+            WalletIdentity::from_seed(&[7u8; 32], MoneroNetwork::Mainnet).unwrap_err(),
+            MoneroError::MainnetDisabled
+        );
+    }
+
+    #[test]
+    fn mainnet_node_selection_is_release_gated() {
+        assert_eq!(
+            select_node(&NodeMode::AutomaticRemote, MoneroNetwork::Mainnet, &[]).unwrap_err(),
+            MoneroError::MainnetDisabled
+        );
+    }
+
+    #[test]
     fn wrong_network_address_is_rejected() {
-        let address = identity(MoneroNetwork::Mainnet).address();
+        let address = identity(MoneroNetwork::Testnet).address();
         assert_eq!(
             parse_address(&address, MoneroNetwork::Stagenet).unwrap_err(),
             MoneroError::WrongNetwork
@@ -741,19 +775,19 @@ mod tests {
         let candidates = vec![
             NodeCandidate {
                 endpoint: "https://node-a.example".into(),
-                network: MoneroNetwork::Mainnet,
+                network: MoneroNetwork::Stagenet,
                 healthy: true,
                 height: 100,
             },
             NodeCandidate {
                 endpoint: "https://node-b.example".into(),
-                network: MoneroNetwork::Mainnet,
+                network: MoneroNetwork::Stagenet,
                 healthy: true,
                 height: 110,
             },
             NodeCandidate {
                 endpoint: "https://node-c.example".into(),
-                network: MoneroNetwork::Mainnet,
+                network: MoneroNetwork::Stagenet,
                 healthy: false,
                 height: 120,
             },
@@ -761,7 +795,7 @@ mod tests {
         assert_eq!(
             select_node(
                 &NodeMode::AutomaticRemote,
-                MoneroNetwork::Mainnet,
+                MoneroNetwork::Stagenet,
                 &candidates
             )
             .unwrap()
@@ -775,7 +809,7 @@ mod tests {
         assert_eq!(
             select_node(
                 &NodeMode::CustomRemote("http://remote.example:18081".into()),
-                MoneroNetwork::Mainnet,
+                MoneroNetwork::Stagenet,
                 &[]
             )
             .unwrap_err(),
@@ -785,13 +819,13 @@ mod tests {
         let candidates = vec![
             NodeCandidate {
                 endpoint: "http://faster.example".into(),
-                network: MoneroNetwork::Mainnet,
+                network: MoneroNetwork::Stagenet,
                 healthy: true,
                 height: 200,
             },
             NodeCandidate {
                 endpoint: "https://secure.example".into(),
-                network: MoneroNetwork::Mainnet,
+                network: MoneroNetwork::Stagenet,
                 healthy: true,
                 height: 150,
             },
@@ -799,7 +833,7 @@ mod tests {
         assert_eq!(
             select_node(
                 &NodeMode::AutomaticRemote,
-                MoneroNetwork::Mainnet,
+                MoneroNetwork::Stagenet,
                 &candidates
             )
             .unwrap()
@@ -813,7 +847,7 @@ mod tests {
         assert!(
             select_node(
                 &NodeMode::LocalNode("http://127.0.0.1:18081".into()),
-                MoneroNetwork::Mainnet,
+                MoneroNetwork::Stagenet,
                 &[]
             )
             .is_ok()
@@ -821,7 +855,7 @@ mod tests {
         assert_eq!(
             select_node(
                 &NodeMode::LocalNode("https://remote.example:18081".into()),
-                MoneroNetwork::Mainnet,
+                MoneroNetwork::Stagenet,
                 &[]
             )
             .unwrap_err(),
@@ -838,7 +872,7 @@ mod tests {
             spent: false,
         };
         let snapshot = SyncSnapshot {
-            network: MoneroNetwork::Mainnet,
+            network: MoneroNetwork::Stagenet,
             scanned_height: 10,
             chain_height: 10,
             outputs: vec![output.clone(), output],
@@ -859,7 +893,7 @@ mod tests {
             ..WalletState::default()
         };
         let snapshot = SyncSnapshot {
-            network: MoneroNetwork::Mainnet,
+            network: MoneroNetwork::Stagenet,
             scanned_height: 800,
             chain_height: 800,
             outputs: vec![],
@@ -871,7 +905,7 @@ mod tests {
         );
 
         let invalid = SyncSnapshot {
-            network: MoneroNetwork::Mainnet,
+            network: MoneroNetwork::Stagenet,
             scanned_height: 11,
             chain_height: 10,
             outputs: vec![],
@@ -1033,7 +1067,7 @@ mod tests {
         assert_eq!(wallet.state().scanned_height, 42);
 
         let wrong_network = GateBackend {
-            network: MoneroNetwork::Mainnet,
+            network: MoneroNetwork::Stagenet,
             healthy: true,
             broadcast_count: std::cell::Cell::new(0),
         };
