@@ -347,15 +347,15 @@ impl VaultCore {
                 },
                 SecurityFinding {
                     category: SecurityCategory::Backup,
-                    control: "Recovery backup",
-                    assurance: Assurance::Unknown,
-                    detail: "Backup state has not been verified",
+                    control: "Encrypted recovery backup",
+                    assurance: Assurance::Verified,
+                    detail: "Encrypted vault backups are authenticated with the vault password before export and remain encrypted at rest",
                 },
                 SecurityFinding {
                     category: SecurityCategory::Backup,
-                    control: "Recovery verification",
-                    assurance: Assurance::Unknown,
-                    detail: "Recovery material has not been verified",
+                    control: "Recovery restore boundary",
+                    assurance: Assurance::Verified,
+                    detail: "Restore authenticates encrypted backup material and refuses to overwrite an existing destination vault",
                 },
                 SecurityFinding {
                     category: SecurityCategory::TransactionProtection,
@@ -493,6 +493,36 @@ impl VaultCore {
             KdfParams::default(),
         )?;
         write_new_envelope_atomic(path, &envelope)?;
+        Ok(())
+    }
+
+    pub fn create_recovery_backup(
+        &self,
+        vault_path: &Path,
+        backup_path: &Path,
+        password: &[u8],
+    ) -> Result<(), CoreVaultError> {
+        let envelope = read_envelope(vault_path)?;
+        if envelope.domain() != VaultDomain::Wallet {
+            return Err(CoreVaultError::WrongDomain);
+        }
+        let _verified_secret = open(password, &envelope)?;
+        write_new_envelope_atomic(backup_path, &envelope)?;
+        Ok(())
+    }
+
+    pub fn restore_recovery_backup(
+        &self,
+        backup_path: &Path,
+        destination_vault_path: &Path,
+        password: &[u8],
+    ) -> Result<(), CoreVaultError> {
+        let envelope = read_envelope(backup_path)?;
+        if envelope.domain() != VaultDomain::Wallet {
+            return Err(CoreVaultError::WrongDomain);
+        }
+        let _verified_secret = open(password, &envelope)?;
+        write_new_envelope_atomic(destination_vault_path, &envelope)?;
         Ok(())
     }
 
@@ -659,10 +689,14 @@ mod tests {
                 .any(|f| f.control == "Outbound-only policy" && f.assurance == Assurance::Verified)
         );
         assert!(
-            report
-                .findings
-                .iter()
-                .any(|f| f.control == "Recovery backup" && f.assurance == Assurance::Unknown)
+            report.findings.iter().any(|f| {
+                f.control == "Encrypted recovery backup" && f.assurance == Assurance::Verified
+            })
+        );
+        assert!(
+            report.findings.iter().any(|f| {
+                f.control == "Recovery restore boundary" && f.assurance == Assurance::Verified
+            })
         );
         assert!(
             report
@@ -835,6 +869,37 @@ mod tests {
         core.lock();
         assert_eq!(core.status().lock_state, VaultLockState::Locked);
         assert!(core.wallet_secret().is_none());
+
+        fs::remove_dir_all(path.parent().unwrap()).unwrap();
+    }
+
+    #[test]
+    fn encrypted_backup_round_trip_requires_correct_password_and_never_overwrites() {
+        let path = unique_vault_path();
+        let backup = path.parent().unwrap().join("wallet-backup.dvlt");
+        let restored = path.parent().unwrap().join("restored").join("wallet.dvlt");
+        let core = VaultCore::default();
+
+        core.create_local_vault(&path, b"backup-password", b"backup-secret")
+            .unwrap();
+        assert!(
+            core.create_recovery_backup(&path, &backup, b"wrong-password")
+                .is_err()
+        );
+        core.create_recovery_backup(&path, &backup, b"backup-password")
+            .unwrap();
+        core.restore_recovery_backup(&backup, &restored, b"backup-password")
+            .unwrap();
+        assert!(
+            core.restore_recovery_backup(&backup, &restored, b"backup-password")
+                .is_err()
+        );
+
+        let mut restored_core = VaultCore::default();
+        restored_core
+            .unlock_local_vault(&restored, b"backup-password")
+            .unwrap();
+        assert_eq!(restored_core.wallet_secret().unwrap(), b"backup-secret");
 
         fs::remove_dir_all(path.parent().unwrap()).unwrap();
     }
