@@ -10,6 +10,7 @@ vault-crypto = { path = "../vault-crypto" }
 vault-network = { path = "../vault-network" }
 vault-monero = { path = "../vault-monero" }
 vault-policy = { path = "../vault-policy" }
+vault-release = { path = "../vault-release" }
 vault-storage = { path = "../vault-storage" }
 vault-swap = { path = "../vault-swap" }
 vault-signing = { path = "../vault-signing" }
