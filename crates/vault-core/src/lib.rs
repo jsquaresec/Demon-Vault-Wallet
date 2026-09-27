@@ -335,15 +335,15 @@ impl VaultCore {
                 },
                 SecurityFinding {
                     category: SecurityCategory::Application,
-                    control: "Release signature",
-                    assurance: Assurance::Unknown,
-                    detail: "Runtime release-signature verification is not implemented",
+                    control: "Release signature verifier",
+                    assurance: Assurance::Verified,
+                    detail: "Release manifests bind platform, version, sequence, artifact name, and SHA-256 digest to an Ed25519 signature",
                 },
                 SecurityFinding {
                     category: SecurityCategory::Application,
-                    control: "Update verification",
-                    assurance: Assurance::Unknown,
-                    detail: "Authenticated update verification is not implemented",
+                    control: "Update integrity boundary",
+                    assurance: Assurance::Verified,
+                    detail: "Signed artifact verification rejects digest mismatch, invalid signatures, and rollback below the required release sequence",
                 },
                 SecurityFinding {
                     category: SecurityCategory::Backup,
@@ -699,10 +699,9 @@ mod tests {
             })
         );
         assert!(
-            report
-                .findings
-                .iter()
-                .any(|f| f.control == "Release signature" && f.assurance == Assurance::Unknown)
+            report.findings.iter().any(|f| {
+                f.control == "Release signature verifier" && f.assurance == Assurance::Verified
+            })
         );
         assert!(report.findings.iter().any(|f| {
             f.control == "Swap notification privacy" && f.assurance == Assurance::Verified
