@@ -20,7 +20,7 @@ Monero supports three node-selection modes: automatic remote node by default, a 
 
 Remote nodes are untrusted. The backend boundary never receives the wallet seed, private spend key, private view key, vault password, or signing authority. Chain transactions are fetched through the narrow backend interface and ownership scanning is performed locally using the private view key and public spend key.
 
-Wallet identity creation is deterministic from vault-protected seed material and uses separate domain-separated spend and view derivation. Address parsing validates Mainnet, Stagenet, and Testnet identity explicitly.
+Wallet identity creation is deterministic from vault-protected seed material and uses separate domain-separated spend and view derivation. Stagenet and Testnet are available for release-candidate validation. Mainnet identity creation, address use, and node selection fail closed until the production release gate is satisfied.
 
 Synchronization state rejects malformed heights, duplicate outputs, arithmetic overflow, malformed transaction data, undecodable confidential amounts, and unexpectedly deep reorganization reports. Fee estimates are bounded before they can become part of a transaction intent.
 
