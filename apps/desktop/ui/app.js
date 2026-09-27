@@ -255,3 +255,41 @@ async function loadTransactionSecurity() {
   }
 }
 loadTransactionSecurity();
+
+
+async function loadReleaseReadiness() {
+  const details = document.getElementById("releaseReadinessDetails");
+  try {
+    if (!window.__TAURI__?.core?.invoke || !details) return;
+    const raw = await window.__TAURI__.core.invoke("release_readiness_status");
+    const values = Object.fromEntries(raw.split(";").map((part) => part.split("=")));
+    details.replaceChildren();
+    [
+      ["Candidate mode", values.candidate, true],
+      ["Mainnet enabled", values.mainnet, false],
+      ["Internal security audit", values["internal-audit"], true],
+      ["Independent security assessment", values["independent-audit"], true],
+      ["Real-node compatibility", values["real-nodes"], true],
+      ["Hardware signing validation", values.hardware, true],
+      ["Recovery/restore validation", values.recovery, true],
+      ["Migration validation", values.migration, true],
+      ["Installer matrix validation", values.installers, true],
+      ["Signed release validation", values["signed-release"], true],
+      ["Update verification", values.updater, true],
+    ].forEach(([label, value, expectedTrue]) => {
+      const row = document.createElement("div");
+      row.className = "check-row";
+      const left = document.createElement("span");
+      left.textContent = label;
+      const right = document.createElement("strong");
+      const ready = expectedTrue ? value === "true" : value === "false";
+      right.className = ready ? "good" : "pending";
+      right.textContent = value;
+      row.append(left, right);
+      details.append(row);
+    });
+  } catch {
+    if (details) details.textContent = "Unable to read release readiness from the Rust core.";
+  }
+}
+loadReleaseReadiness();
