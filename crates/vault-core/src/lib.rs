@@ -133,7 +133,7 @@ impl Default for VaultCore {
             policy: PolicyEngine,
             network_policy: NetworkPolicy::default(),
             network_privacy: NetworkPrivacyConfig::default(),
-            monero_network: MoneroNetwork::Mainnet,
+            monero_network: MoneroNetwork::Stagenet,
             monero_node_mode: NodeMode::default(),
             zcash_network: ZcashNetwork::Testnet,
             zcash_privacy_policy: PrivacyPolicy::ShieldedRequired,
@@ -319,7 +319,7 @@ impl VaultCore {
                     category: SecurityCategory::Privacy,
                     control: "Monero remote-node trust",
                     assurance: Assurance::Configured,
-                    detail: "Remote Monero nodes are untrusted and receive no wallet private keys",
+                    detail: "Remote Monero nodes are untrusted, receive no wallet private keys, and mainnet remains release-gated",
                 },
                 SecurityFinding {
                     category: SecurityCategory::Privacy,
@@ -716,7 +716,7 @@ mod tests {
     #[test]
     fn monero_defaults_to_automatic_remote_without_changing_network_posture() {
         let core = VaultCore::default();
-        assert_eq!(core.monero_network(), MoneroNetwork::Mainnet);
+        assert_eq!(core.monero_network(), MoneroNetwork::Stagenet);
         assert_eq!(core.monero_node_mode(), &NodeMode::AutomaticRemote);
         assert!(core.status().network_policy.outbound_only());
     }
