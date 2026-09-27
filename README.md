@@ -62,3 +62,8 @@ Release-level security checks are documented in `docs/security/RELEASE-AUDIT.md`
 Demon Vault now has a fail-closed production release gate and signed-artifact verification boundary. The current repository is a **release candidate**, not a production-mainnet approval: independent security assessment, real-node compatibility, physical hardware signing, recovery/migration, installer-matrix, signed-artifact, and updater validation remain explicit blockers. See `docs/release/RELEASE-CANDIDATE.md`.
 
 Mainnet is not enabled merely because automated CI passes. The release layer requires explicit production evidence before a mainnet permit can be issued.
+
+
+## Production maintenance
+
+The final production process, recovery procedure, vulnerability-response policy, and maintenance requirements are documented in `docs/release/PRODUCTION.md`. The desktop is versioned as `1.0.0-rc.1` while mandatory external and real-world release evidence remains incomplete. This avoids representing an unsigned or incompletely validated build as an approved production release.
