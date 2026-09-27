@@ -1070,7 +1070,7 @@ mod tests {
         assert_eq!(wallet.state().scanned_height, 42);
 
         let wrong_network = GateBackend {
-            network: MoneroNetwork::Stagenet,
+            network: MoneroNetwork::Testnet,
             healthy: true,
             broadcast_count: std::cell::Cell::new(0),
         };
