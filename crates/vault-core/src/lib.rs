@@ -5,6 +5,7 @@ use vault_crypto::{KdfParams, SecretBytes, VaultDomain, VaultError, open, seal};
 use vault_monero::{MoneroNetwork, NodeMode};
 use vault_network::{NetworkPolicy, NetworkPrivacyConfig, PrivacyRoute};
 use vault_policy::{Asset, CoreAction, CoreDecision, PolicyEngine};
+use vault_release::{MainnetPermit, ReleaseGateEvidence};
 use vault_signing::{SignedTransaction, SigningAsset, SigningError, SigningMode, SigningRequest};
 use vault_storage::{StorageError, read_envelope, write_new_envelope_atomic};
 use vault_transaction::{
@@ -98,6 +99,21 @@ pub struct TransactionSecurityStatus {
     pub typed_confirmation_required: bool,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ReleaseReadinessStatus {
+    pub candidate_mode: bool,
+    pub mainnet_enabled: bool,
+    pub internal_security_audit: bool,
+    pub independent_security_assessment: bool,
+    pub real_node_compatibility: bool,
+    pub hardware_signing_validation: bool,
+    pub recovery_restore_validation: bool,
+    pub migration_validation: bool,
+    pub installer_matrix_validation: bool,
+    pub signed_release_validation: bool,
+    pub update_verification_validation: bool,
+}
+
 pub struct VaultCore {
     lock_state: VaultLockState,
     policy: PolicyEngine,
@@ -179,6 +195,33 @@ impl VaultCore {
             fee_limits_ready: true,
             exact_binding_ready: true,
             typed_confirmation_required: true,
+        }
+    }
+
+    pub fn release_readiness_status(&self) -> ReleaseReadinessStatus {
+        let evidence = ReleaseGateEvidence {
+            internal_security_audit: true,
+            independent_security_assessment: false,
+            real_node_compatibility: false,
+            hardware_signing_validation: false,
+            recovery_restore_validation: false,
+            migration_validation: false,
+            installer_matrix_validation: false,
+            signed_release_validation: false,
+            update_verification_validation: false,
+        };
+        ReleaseReadinessStatus {
+            candidate_mode: true,
+            mainnet_enabled: MainnetPermit::issue(evidence).is_ok(),
+            internal_security_audit: evidence.internal_security_audit,
+            independent_security_assessment: evidence.independent_security_assessment,
+            real_node_compatibility: evidence.real_node_compatibility,
+            hardware_signing_validation: evidence.hardware_signing_validation,
+            recovery_restore_validation: evidence.recovery_restore_validation,
+            migration_validation: evidence.migration_validation,
+            installer_matrix_validation: evidence.installer_matrix_validation,
+            signed_release_validation: evidence.signed_release_validation,
+            update_verification_validation: evidence.update_verification_validation,
         }
     }
 
@@ -666,6 +709,22 @@ mod tests {
         assert!(status.webhook_transport_ready);
         assert!(status.anonymous_schema_enforced);
         assert!(!status.webhook_configured);
+    }
+
+    #[test]
+    fn release_candidate_fails_closed_for_mainnet() {
+        let status = VaultCore::default().release_readiness_status();
+        assert!(status.candidate_mode);
+        assert!(status.internal_security_audit);
+        assert!(!status.mainnet_enabled);
+        assert!(!status.independent_security_assessment);
+        assert!(!status.real_node_compatibility);
+        assert!(!status.hardware_signing_validation);
+        assert!(!status.recovery_restore_validation);
+        assert!(!status.migration_validation);
+        assert!(!status.installer_matrix_validation);
+        assert!(!status.signed_release_validation);
+        assert!(!status.update_verification_validation);
     }
 
     #[test]
