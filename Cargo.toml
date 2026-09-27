@@ -13,5 +13,6 @@ members = [
     "crates/vault-signing",
     "crates/vault-transaction",
     "crates/vault-security-tests",
+    "crates/vault-release",
     "apps/desktop/src-tauri",
 ]
